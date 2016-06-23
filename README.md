@@ -1,5 +1,7 @@
 # Eventsrc4j
 
+[![Join the chat at https://gitter.im/jbgi/eventsrc4j](https://badges.gitter.im/jbgi/eventsrc4j.svg)](https://gitter.im/jbgi/eventsrc4j?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 Purely functional event sourcing library (not framework) for Java!
 Largely inspired by the excellent scala library https://bitbucket.org/atlassianlabs/eventsrc 
 
