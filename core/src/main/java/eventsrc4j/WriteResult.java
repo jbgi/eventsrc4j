@@ -3,9 +3,9 @@ package eventsrc4j;
 import org.derive4j.Data;
 
 @Data
-public abstract class PutResult {
+public abstract class WriteResult {
 
-    PutResult(){}
+    WriteResult(){}
 
     public interface Cases<X> {
         X Success();
