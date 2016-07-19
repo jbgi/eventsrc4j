@@ -13,11 +13,11 @@ public abstract class GlobalSeq<S> {
     public abstract <R> R match(@FieldNames({"globalSeq", "seq"}) BiFunction<S, S, R> seq); 
     
     public final S globalSeq() {
-        return Seqs.getGlobalSeq(this);
+        return GlobalSeqs.getGlobalSeq(this);
     }
 
     public final S seq() {
-        return Seqs.getSeq(this);
+        return GlobalSeqs.getSeq(this);
     }
     
 }
