@@ -13,7 +13,7 @@ import org.derive4j.Data;
 @Data public abstract class Event<K, S, E> {
 
   public interface Case<K, S, E, R> {
-    R Event(K key, S seq, Instant time, E domainEvent);
+    R Event(K key, S seq, S globalSeq, Instant time, E domainEvent);
   }
 
   Event() {}
@@ -29,6 +29,13 @@ import org.derive4j.Data;
    */
   public final S seq() {
     return getSeq(this);
+  }
+
+  /**
+   * Global sequence number of the event (cross-key)
+   */
+  public final S globalSeq() {
+    return getGlobalSeq(this);
   }
 
   /**
