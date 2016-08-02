@@ -15,7 +15,7 @@
     <dependency>
       <groupId>org.derive4j</groupId>
       <artifactId>derive4j</artifactId>
-      <version>0.8.2</version>
+      <version>0.9-SNAPSHOT</version>
       <optional>true</optional>
     </dependency>
   </dependencies>
