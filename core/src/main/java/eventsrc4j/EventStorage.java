@@ -23,17 +23,14 @@ public interface EventStorage<K, S, E> {
    * @param expectedSeq expected last saved sequence of the stream, or empty if the stream is expected to be empty.
    * @param time timestamp of the events to save.
    * @param events a list of events to save in the stream.
-   *
-   * @return an IO action producing the result of the write;
-   * either successful or indicating an optimistic concurrency error (duplicated sequence).
+   * @return an IO action producing the result of the write; either successful or indicating an optimistic concurrency error (duplicated sequence).
    */
-  IO<WriteResult> write(K key, Optional<S> expectedSeq, Instant time, List<E> events);
+  IO<WriteResult> write(K key, Optional<S> expectedSeq, Instant time, Stream<E> events);
 
   /**
    * Get the latest event of a stream.
    *
    * @param key The key of the stream.
-   *
    * @return an IO action producing the single latest event, if found.
    */
   IO<Optional<Event<K, S, E>>> latest(K key);
@@ -45,7 +42,6 @@ public interface EventStorage<K, S, E> {
    * @param fromSeq The starting sequence to read events from (exclusive). Empty to read from the start.
    * @param streamReader a fold on the stream of events.
    * @param <R> the results of the stream fold. Must NOT reference the folded {@link Stream}.
-   *
    * @return an IO action producing the result of the stream fold. The {@link Stream} is closed and unreadable after execution of the action.
    */
   <R> IO<R> read(K key, Optional<S> fromSeq, StreamReader<K, S, E, R> streamReader);
@@ -56,7 +52,7 @@ public interface EventStorage<K, S, E> {
    *
    * @return an IO action producing the single latest event, if found.
    */
-  IO<Optional<Event<K, S, E>>> allLatest();
+  IO<Optional<Event<K, GlobalSeq<S>, E>>> allLatest();
 
   /**
    * Read from all streams of events, in order of global sequence (relative to this event storage).
@@ -65,10 +61,9 @@ public interface EventStorage<K, S, E> {
    * @param fromGlobalSeq The starting sequence to read events from (exclusive). None to read from the start.
    * @param globalStreamReader fold on the stream of all events.
    * @param <R> the results of the stream fold. Must NOT reference the folded {@link Stream}.
-   *
    * @return an IO action producing the result of the stream fold. The {@link Stream} is closed and unreadable after execution of the action.
    */
-  <R> IO<R> readAll(Optional<S> fromGlobalSeq, StreamReader<K, S, E, R> globalStreamReader);
+  <R> IO<R> readAll(Optional<S> fromGlobalSeq, StreamReader<K, GlobalSeq<S>, E, R> globalStreamReader);
 
   /**
    * Read from all streams of events, in order of global sequence (relative to this event storage).
@@ -76,7 +71,6 @@ public interface EventStorage<K, S, E> {
    *
    * @param keyStreamReader fold on the stream of all keys.
    * @param <R> the results of the stream fold. Must NOT reference the folded {@link Stream}.
-   *
    * @return an IO action producing the result of the stream fold. The {@link Stream} is closed and unreadable after execution of the action.
    */
   <R> IO<R> readAllKeys(Function<Stream<K>, R> keyStreamReader);

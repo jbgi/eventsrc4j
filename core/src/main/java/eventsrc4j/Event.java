@@ -4,6 +4,7 @@ import static eventsrc4j.Events.*;
 
 import java.time.Instant;
 
+import java.util.function.Function;
 import org.derive4j.Data;
 
 /**
@@ -13,7 +14,7 @@ import org.derive4j.Data;
 @Data public abstract class Event<K, S, E> {
 
   public interface Case<K, S, E, R> {
-    R Event(K key, S seq, S globalSeq, Instant time, E domainEvent);
+    R Event(K key, S seq, Instant time, E domainEvent);
   }
 
   Event() {}
@@ -32,13 +33,6 @@ import org.derive4j.Data;
   }
 
   /**
-   * Global sequence number of the event (cross-key)
-   */
-  public final S globalSeq() {
-    return getGlobalSeq(this);
-  }
-
-  /**
    * 
    * @return
    */
@@ -53,5 +47,10 @@ import org.derive4j.Data;
   @Override public abstract int hashCode();
   @Override public abstract boolean equals(Object obj);
   @Override public abstract String toString();
+
+  public static <K, S, E, KK, SS, EE> Function<Event<K, S, E>, Event<KK, SS, EE> > mapKSE(Function<K, KK> kk,   Function<S, SS> ss, Function<E, EE> ee) {
+    return Events.<K, S, E>cases()
+        .Event((key, seq, time, domainEvent) -> Event(kk.apply(key),ss.apply(seq), time, ee.apply(domainEvent)));
+  }
 
 }
