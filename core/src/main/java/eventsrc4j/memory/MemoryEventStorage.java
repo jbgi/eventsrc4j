@@ -42,8 +42,7 @@ public final class MemoryEventStorage<K, S, E> implements EventStorage<K, S, E> 
   @Override public IO<WriteResult> write(K key, Optional<S> expectedSeq, Instant time, Stream<E> events) {
     return () -> {
 
-      ConcurrentNavigableMap<S, Event<K, S, E>> streamMap = streamsByKey.computeIfAbsent(key,
-          __ -> new ConcurrentSkipListMap<S, Event<K, S, E>>(sequence));
+      ConcurrentNavigableMap<S, Event<K, S, E>> streamMap = streamsByKey.computeIfAbsent(key, __ -> new ConcurrentSkipListMap<>(sequence));
 
       class Persist implements Consumer<E> {
 
@@ -51,7 +50,9 @@ public final class MemoryEventStorage<K, S, E> implements EventStorage<K, S, E> 
 
         @Override public void accept(E e) {
           seq = streamMap.putIfAbsent(seq, Events.Event(key, seq, time, e)) == null
+                // If we could insert into the map we increment the sequence for the next event
                 ? sequence.next(seq)
+                // otherwise we use null to indicate that another thread was quicker persist an event for the current sequence
                 : null;
         }
       }
@@ -60,18 +61,26 @@ public final class MemoryEventStorage<K, S, E> implements EventStorage<K, S, E> 
 
       Spliterator<E> spliterator = events.spliterator();
 
-      synchronized (streamMap) {
-        S nextSeq = null;
-        while (spliterator.tryAdvance(persist) && (nextSeq = persist.seq) != null) {
+      WriteResult writeResult;
+      if (spliterator.tryAdvance(persist)) {
+        if (persist.seq == null) {
+          // null seq => the sequence already exist in the stream:
+          writeResult = WriteResults.DuplicateEventSeq();
+        } else {
+          // first event persit succeed: we can persist all the rest without checks because "nextSeqByKey" acts as an upper bound and hides all
+          // the new sequences entries until we "commit" by updating the next seq for the key.
+          while (spliterator.tryAdvance(persist)) {
+          }
+          // "commit":
+          nextSeqByKey.put(key, persist.seq);
+          writeResult = WriteResults.Success();
         }
-        if (nextSeq != null) {
-          nextSeqByKey.put(key, nextSeq);
-        }
+      } else {
+        // The stream is empty, persisting nothing is a sucess!
+        writeResult = WriteResults.Success();
       }
 
-      return persist.seq != null
-             ? WriteResults.Success()
-             : WriteResults.DuplicateEventSeq();
+      return writeResult;
     };
   }
 
