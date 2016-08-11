@@ -67,7 +67,7 @@ public final class MemoryEventStorage<K, S, E> implements EventStorage<K, S, E> 
           // null seq => the sequence already exist in the stream:
           writeResult = WriteResults.DuplicateEventSeq();
         } else {
-          // first event persit succeed: we can persist all the rest without checks because "nextSeqByKey" acts as an upper bound and hides all
+          // first event persist succeed: we can persist all the rest without checks because "nextSeqByKey" acts as an upper bound and hides all
           // the new sequences entries until we "commit" by updating the next seq for the key.
           while (spliterator.tryAdvance(persist)) {
           }

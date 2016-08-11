@@ -75,4 +75,11 @@ public interface EventStorage<K, S, E> {
    */
   <R> IO<R> readAllKeys(Function<Stream<K>, R> keyStreamReader);
 
+  default <KK, SS, EE> EventStorage<KK, SS, EE> xmap(Function<K, KK> kk, Function<KK, K> k, Function<S, SS> ss, Function<SS, S> s, Function<E, EE> ee,
+      Function<EE, E> e) {
+
+    throw new UnsupportedOperationException("TODO");
+
+  }
+
 }
