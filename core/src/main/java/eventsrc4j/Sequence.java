@@ -10,21 +10,23 @@ import java.util.Comparator;
  */
 public interface Sequence<S> extends Comparator<S> {
 
-  S first();
+    S first();
 
-  S next(S seq);
+    S next(S seq);
 
-  Sequence<Long> longs = new Sequence<Long>() {
+    Sequence<Long> longs = new Sequence<Long>() {
 
-    public int compare(Long seq1, Long seq2) {
-      return seq1.compareTo(seq2);
-    }
-    public Long first() {
-      return 1L;
-    }
-    public Long next(Long seq) {
-      return seq + 1;
-    }
-  };
+        public int compare(Long seq1, Long seq2) {
+            return seq1.compareTo(seq2);
+        }
+
+        public Long first() {
+            return 1L;
+        }
+
+        public Long next(Long seq) {
+            return seq + 1;
+        }
+    };
 
 }
