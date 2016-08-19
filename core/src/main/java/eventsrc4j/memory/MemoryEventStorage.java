@@ -10,6 +10,7 @@ import eventsrc4j.StreamReader;
 import eventsrc4j.WriteResult;
 import eventsrc4j.WriteResults;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Spliterator;
@@ -21,6 +22,8 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
+import static eventsrc4j.GlobalSeqs.getSeq;
+import static eventsrc4j.GlobalSeqs.seq;
 import static java.util.Optional.ofNullable;
 
 public final class MemoryEventStorage<K, S, E> implements EventStorage<K, S, E> {
@@ -28,6 +31,10 @@ public final class MemoryEventStorage<K, S, E> implements EventStorage<K, S, E> 
   private final ConcurrentMap<K, ConcurrentNavigableMap<S, Event<K, S, E>>> streamsByKey = new ConcurrentHashMap<>();
 
   private final ConcurrentMap<K, S> nextSeqByKey = new ConcurrentHashMap<>();
+
+  private final ConcurrentNavigableMap<S, Event<K, GlobalSeq<S>, E>> globalStream = new ConcurrentSkipListMap<>();
+
+  private final ConcurrentMap<K, S> globalStreamNextSeqByKey = new ConcurrentHashMap<>();
 
   private final Sequence<S> sequence;
 
@@ -97,7 +104,45 @@ public final class MemoryEventStorage<K, S, E> implements EventStorage<K, S, E> 
   }
 
   @Override public IO<Optional<Event<K, GlobalSeq<S>, E>>> allLatest() {
+
+    Function<Event<K, S, E>, Event<K, GlobalSeq<S>, E>>  persistInGlobalStream = persistInGlobalStream();
+
+    nextSeqByKey.entrySet()
+        .stream()
+        .flatMap(keyNextSeq -> {
+          Collection<Event<K, S, E>> keyEvents = streamsByKey.get(keyNextSeq.getKey())
+              .subMap(globalStreamNextSeqByKey.getOrDefault(keyNextSeq.getKey(), sequence.first()), true, keyNextSeq.getValue(), false)
+              .values();
+          return keyEvents.stream().map(persistInGlobalStream);
+        })
+        .sequential();
+
     throw new UnsupportedOperationException("TODO");
+  }
+
+  private Function<Event<K, S, E>, Event<K, GlobalSeq<S>, E>> persistInGlobalStream() {
+
+    return new Function<Event<K, S, E>, Event<K, GlobalSeq<S>, E>>() {
+
+      S nextGlobalSeq = ofNullable(globalStream.lastEntry()).map(Map.Entry::getKey).map(sequence::next).orElse(sequence.first());
+
+      @Override public Event<K, GlobalSeq<S>, E> apply(Event<K, S, E> e) {
+
+        Event<K, GlobalSeq<S>, E> eventWithGlobalSeq = Events.<K, S, E, GlobalSeq<S>>modSeq(s -> seq(nextGlobalSeq, s)).apply(e);
+
+        Event<K, GlobalSeq<S>, E> existingEventAtSeq = globalStream.putIfAbsent(nextGlobalSeq, eventWithGlobalSeq);
+
+        if (existingEventAtSeq == null ||
+            existingEventAtSeq.match((key, seq, _t1, _e1) -> e.match((key2, seq2, _t2, _e2) -> key.equals(key2) && getSeq(seq).equals(seq2)))) {
+          // If we could insert into the map, or another thread has insterted the same event, we increment the sequence for the next event
+          nextGlobalSeq = sequence.next(nextGlobalSeq);
+          return eventWithGlobalSeq;
+        } else {
+          // otherwise we use null to indicate that another thread was quicker persist an event for the current sequence
+          return null;
+        }
+      }
+    };
   }
 
   @Override public <R> IO<R> readAll(Optional<S> fromGlobalSeq, StreamReader<K, GlobalSeq<S>, E, R> globalStreamReader) {
