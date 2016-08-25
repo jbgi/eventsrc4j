@@ -1,38 +1,35 @@
 package eventsrc4j;
 
-import java.util.function.Function;
-
+import java.util.List;
+import java.util.Optional;
 import org.derive4j.Data;
 
+import static eventsrc4j.WriteResults.getEvents;
+
 @Data
-public abstract class WriteResult {
+public abstract class WriteResult<K, S, E> {
 
-    private static final Function<WriteResult, Boolean> isSuccess = WriteResults.cases()
-            .Success(true)
-            .otherwise(false);
+  WriteResult() {
+  }
 
-    WriteResult() {
-    }
+  public interface Cases<K, S, E, X> {
+    X Success(List<Event<K, S, E>> events);
 
-    public interface Cases<X> {
-        X Success();
+    X DuplicateEventSeq();
+  }
 
-        X DuplicateEventSeq();
-    }
+  public abstract <X> X match(Cases<K, S, E, X> cases);
 
-    public boolean successful() {
-        return isSuccess.apply(this);
-    }
+  public final Optional<List<Event<K, S, E>>> events() {
+    return getEvents(this);
+  }
 
-    public abstract <X> X match(Cases<X> cases);
+  @Override
+  public abstract String toString();
 
-    @Override
-    public abstract String toString();
+  @Override
+  public abstract boolean equals(Object obj);
 
-    @Override
-    public abstract boolean equals(Object obj);
-
-    @Override
-    public abstract int hashCode();
-
+  @Override
+  public abstract int hashCode();
 }

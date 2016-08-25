@@ -1,65 +1,68 @@
 package eventsrc4j;
 
-import static eventsrc4j.Events.Event;
-import static eventsrc4j.GlobalSeqs.*;
-import static fj.test.Property.*;
-
-import java.time.Instant;
-import java.util.Optional;
-import java.util.function.Supplier;
-import java.util.stream.Stream;
-
 import fj.test.Gen;
 import fj.test.Property;
-import fj.test.reflect.CheckParams;
-import fj.test.runner.PropertyTestRunner;
-import org.junit.runner.RunWith;
+import java.time.Instant;
+import java.util.Optional;
 
-@RunWith(PropertyTestRunner.class)
-@CheckParams(maxSize = 10000)
-public class EventStorageSpec<K, S, E> {
+import static fj.test.Property.prop;
+import static fj.test.Property.property;
+import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.toList;
 
-    private Supplier<EventStorage<K, S, E>> emptyEventStorage;
+public final class EventStorageSpec<K, S, E> {
 
-    private Sequence<S> sequence;
+  private final Gen<K> keys;
 
-    private Gen<K> keys;
+  private final Gen<E> events;
 
-    private Gen<E> events;
+  public EventStorageSpec(Gen<K> keys, Gen<E> events) {
+    this.keys = keys;
+    this.events = events;
+  }
 
-    public EventStorageSpec(Supplier<EventStorage<K, S, E>> emptyEventStorage, Gen<K> keys, Sequence<S> sequence, Gen<E> events) {
-        this.emptyEventStorage = emptyEventStorage;
-        this.sequence = sequence;
-        this.keys = keys;
-        this.events = events;
-    }
+  public Property read_return_write(EventStorage<K, S, E> eventStorage) {
+    return property(keys, events, key -> event -> {
 
-    public Property latest_from_empty_stream_is_absent() {
-        return property(keys, key -> prop(!emptyEventStorage.get().latest(key).runUnchecked().isPresent()));
-    }
+      Optional<S> lastSeq =
+          eventStorage.stream(key).read(Optional.empty(), s -> s.reduce((first, second) -> second))
+              .runUnchecked()
+              .map(Events::getSeq);
 
-    public Property latest_return_last_write() {
-        return property(keys, events, key -> event -> {
+      WriteResult<K, S, E> writeResult = eventStorage.stream(key)
+          .write(lastSeq, Instant.EPOCH, singletonList(event))
+          .runUnchecked();
 
-            EventStorage<K, S, E> eventStorage = emptyEventStorage.get();
+      return prop(
+          writeResult.events().map(
+              writtenEvents -> writtenEvents.size() == 1
+                  && writtenEvents.equals(eventStorage.stream(key)
+                  .read(lastSeq, s -> s.collect(toList()))
+                  .runUnchecked())
+          ).orElse(false)
+      );
+    });
+  }
 
-            WriteResult writeResult = eventStorage.write(key, Optional.empty(), Instant.EPOCH, Stream.of(event)).runUnchecked();
+  public Property concurrent_write_fails(EventStorage<K, S, E> eventStorage) {
+    return property(keys, events, key -> event -> {
 
-            return prop(writeResult.successful()).and(
-                    prop(eventStorage.latest(key).runUnchecked().map(e -> e.equals(Event(key, sequence.first(), Instant.EPOCH, event))).orElse(false)));
-        });
-    }
+      Optional<S> lastSeq =
+          eventStorage.stream(key).read(Optional.empty(), s -> s.reduce((first, second) -> second))
+              .runUnchecked()
+              .map(Events::getSeq);
 
-    public Property allLatest_return_last_write() {
-        return property(keys, events, key -> event -> {
+      eventStorage.stream(key)
+          .write(lastSeq, Instant.EPOCH, singletonList(event))
+          .runUnchecked();
 
-            EventStorage<K, S, E> eventStorage = emptyEventStorage.get();
+      WriteResult<K, S, E> concurrentWrite = eventStorage.stream(key)
+          .write(lastSeq, Instant.EPOCH, singletonList(event))
+          .runUnchecked();
 
-            WriteResult writeResult = eventStorage.write(key, Optional.empty(), Instant.EPOCH, Stream.of(event)).runUnchecked();
-
-            return prop(writeResult.successful()).and(
-                    prop(eventStorage.allLatest().runUnchecked().map(e -> e.equals(Event(key, seq(sequence.first(), sequence.first()), Instant.EPOCH, event))).orElse(false)));
-        });
-    }
-
+      return prop(
+          !concurrentWrite.events().isPresent()
+      );
+    });
+  }
 }

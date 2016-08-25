@@ -1,7 +1,5 @@
 package eventsrc4j.memory;
 
-import static fj.test.Gen.*;
-
 import eventsrc4j.EventStorageSpec;
 import eventsrc4j.Sequence;
 import fj.test.Arbitrary;
@@ -10,28 +8,24 @@ import fj.test.reflect.CheckParams;
 import fj.test.runner.PropertyTestRunner;
 import org.junit.runner.RunWith;
 
+import static fj.test.Gen.elements;
+
 @RunWith(PropertyTestRunner.class)
 @CheckParams(maxSize = 10000, minSuccessful = 200)
-public class MemoryEventStorageTest {
+public final class MemoryEventStorageTest {
 
-    private static final EventStorageSpec<Integer, Long, MemoryEventStorageTest.Event> spec =
-            new EventStorageSpec<>(() -> new MemoryEventStorage<>(Sequence.longs), Arbitrary.arbInteger, Sequence.longs, elements(Event.values()));
+  private static final EventStorageSpec<Integer, Long, MemoryEventStorageTest.Event> spec =
+      new EventStorageSpec<>(Arbitrary.arbInteger, elements(Event.values()));
 
-    enum Event {
-        USER_CREATED, USERNAME_UPDATED, DISPLAY_NAME_UPDATED
-    }
+  public Property read_return_write() {
+    return spec.read_return_write(new MemoryEventStorage<>(Sequence.longs));
+  }
 
-    public Property latest_from_empty_stream_is_absent() {
-        return spec.latest_from_empty_stream_is_absent();
-    }
+  public Property concurrent_write_fails() {
+    return spec.concurrent_write_fails(new MemoryEventStorage<>(Sequence.longs));
+  }
 
-    public Property latest_return_last_write() {
-        return spec.latest_return_last_write();
-    }
-  
-    public Property allLatest_return_last_write() {
-        return spec.allLatest_return_last_write();
-    }
-
-
+  enum Event {
+    USER_CREATED, USERNAME_UPDATED, DISPLAY_NAME_UPDATED
+  }
 }

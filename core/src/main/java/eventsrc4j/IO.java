@@ -6,15 +6,14 @@ import java.io.UncheckedIOException;
 @FunctionalInterface
 public interface IO<A> {
 
-    A run() throws IOException;
+  A run() throws IOException;
 
-    default A runUnchecked() throws UncheckedIOException {
-        try {
-            return run();
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
+  default A runUnchecked() throws UncheckedIOException {
+    try {
+      return run();
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
     }
-
+  }
 }
 
