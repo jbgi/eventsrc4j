@@ -4,16 +4,34 @@ import java.time.Instant;
 import java.util.Optional;
 import java.util.function.Function;
 
+/**
+ * Read and write actions on a stream.
+ *
+ * @param <K> events key type.
+ * @param <S> sequence used for ordering events in the stream.
+ * @param <E> concrete domain events type.
+ * @param <R> action result type.
+ * @see eventsrc4j.io.WStreamActionIO for an IO interpreter.
+ */
 @FunctionalInterface
 public interface WStreamAction<K, S, E, R> {
 
+  /**
+   * Interpreter of base stream actions.
+   *
+   * @param <R> action result type.
+   * @param <X> interpreted action result type (eg. wrapped in a container).
+   */
   interface Interpreter<K, S, E, R, X> extends StreamAction.Interpreter<K, S, E, R, X> {
     X Write(Optional<S> expectedSeq, Instant time, Iterable<E> events,
         Function<WriteResult<K, S, E>, R> withResult);
   }
 
+  /**
+   * Extends the interpreter to an (operational) monad algebra.
+   */
   interface Algebra<K, S, E, R, X>
-      extends StreamAction.Algebra<K, S, E, R, X>, Interpreter<K, S, E, R, X> {
+      extends Interpreter<K, S, E, R, X>, StreamAction.Algebra<K, S, E, R, X> {
 
     <Q> X Bind(WStreamAction<K, S, E, Q> action, Function<Q, WStreamAction<K, S, E, R>> function);
 
@@ -36,7 +54,6 @@ public interface WStreamAction<K, S, E, R> {
       return Map(of(action), function);
     }
   }
-
 
   static <K, S, E, R> WStreamAction<K, S, E, R> of(StreamAction<K, S, E, R> streamAction) {
     return streamAction::eval;
