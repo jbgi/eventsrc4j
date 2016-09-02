@@ -1,5 +1,8 @@
-package eventsrc4j;
+package eventsrc4j.io;
 
+import eventsrc4j.Event;
+import eventsrc4j.StreamReader;
+import eventsrc4j.io.IO;
 import java.util.Optional;
 import java.util.stream.Stream;
 
@@ -13,7 +16,7 @@ import java.util.stream.Stream;
 public interface EventStream<K, S, E> {
 
   /**
-   * Read a stream of events, in order of sequence, from the underlying data store.
+   * Read the stream of events, in order of sequence, from the underlying data store.
    *
    * @param fromSeq The starting sequence to read events from (exclusive). Empty to read from the
    * start.
@@ -23,4 +26,12 @@ public interface EventStream<K, S, E> {
    * unreadable after execution of the action.
    */
   <R> IO<R> read(Optional<S> fromSeq, StreamReader<K, S, E, R> streamReader);
+
+  /**
+   * Get the latest event of the stream.
+   *
+   * @return an IO action producing the single latest event, if found.
+   */
+  IO<Optional<Event<K, S, E>>> latest();
+
 }

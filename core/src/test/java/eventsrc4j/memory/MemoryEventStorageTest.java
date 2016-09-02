@@ -2,6 +2,7 @@ package eventsrc4j.memory;
 
 import eventsrc4j.EventStorageSpec;
 import eventsrc4j.Sequence;
+import eventsrc4j.io.WStreamActionIO;
 import fj.test.Arbitrary;
 import fj.test.Property;
 import fj.test.reflect.CheckParams;
@@ -23,6 +24,13 @@ public final class MemoryEventStorageTest {
 
   public Property concurrent_write_fails() {
     return spec.concurrent_write_fails(new MemoryEventStorage<>(Sequence.longs));
+  }
+
+  public Property read_return_write_actions() {
+    MemoryEventStorage<Integer, Long, Event> eventStorage = new MemoryEventStorage<>(Sequence.longs);
+
+    return spec.read_return_write_actions(
+        k -> action -> action.eval(WStreamActionIO.ioAlgebra(eventStorage.stream(k))).runUnchecked());
   }
 
   enum Event {

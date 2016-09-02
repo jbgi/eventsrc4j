@@ -1,4 +1,4 @@
-package eventsrc4j;
+package eventsrc4j.io;
 
 import java.util.function.Function;
 
