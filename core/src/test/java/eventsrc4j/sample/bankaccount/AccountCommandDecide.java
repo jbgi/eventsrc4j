@@ -8,12 +8,12 @@ import static eventsrc4j.sample.bankaccount.AccountCommandDecisions.Refused;
 import static eventsrc4j.sample.bankaccount.AccountCommandRefusedReasons.AccountAlreadyOpened;
 import static eventsrc4j.sample.bankaccount.AccountCommandRefusedReasons.AccountUnopened;
 import static eventsrc4j.sample.bankaccount.AccountCommandRefusedReasons.InsufficientFunds;
-import static eventsrc4j.sample.bankaccount.AccountEvents.Created;
 import static eventsrc4j.sample.bankaccount.AccountEvents.Credited;
+import static eventsrc4j.sample.bankaccount.AccountEvents.Opened;
 import static eventsrc4j.sample.bankaccount.AccountEvents.Overdrawn;
 import static eventsrc4j.sample.bankaccount.AccountEvents.Withdrawn;
+import static eventsrc4j.sample.bankaccount.OpenedAccounts.ifSufficientDeposit;
 import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
 
 public final class AccountCommandDecide
     implements AccountCommand.Cases<Function<AccountState, AccountCommandDecision>> {
@@ -23,41 +23,51 @@ public final class AccountCommandDecide
       String accountNumber, Amount initialDeposit, BigDecimal minBalance) {
 
     return AccountStates.cases()
+        // Command is only valid on unopened account
+        .Unopened(
+            // initialDeposit must be > minBalance:
+            ifSufficientDeposit(initialDeposit, minBalance)
+                .map(__ -> Accepted(Opened(accountNumber, initialDeposit, minBalance)))
 
-        .Unopened(() -> OpenedAccounts.Open(initialDeposit, minBalance)
-
-            .map(__ -> Accepted(
-                singletonList(Created(accountNumber, initialDeposit, minBalance))))
-
-            .orElse(Refused(InsufficientFunds())))
-
-        .otherwise(Refused(AccountAlreadyOpened()));
+                .orElse(Refused(InsufficientFunds()))
+        )
+        .otherwise(
+            Refused(AccountAlreadyOpened())
+        );
   }
 
   @Override
   public Function<AccountState, AccountCommandDecision> Withdraw(Amount amount) {
 
     return AccountStates.cases()
-
-        .Opened(openedAccount -> openedAccount.withdraw(amount)
-
-            .map(newValidState -> newValidState.balance().compareTo(BigDecimal.ZERO) < 0
-                ? asList(Withdrawn(amount), Overdrawn())
-                : singletonList(Withdrawn(amount)))
-            .map(AccountCommandDecisions::Accepted)
-
-            .orElse(Refused(InsufficientFunds())))
-
-        .otherwise(Refused(AccountUnopened()));
+        // Command is only valid on opened account
+        .Opened(account ->
+            // can be withdrawn without hitting min balance ?
+            account.tryWithdraw(amount)
+                .map(withdrawnAccount -> // yes!
+                    withdrawnAccount.hasPositiveBalance()
+                        ? Accepted(Withdrawn(amount))
+                        // but negative balance: let's trigger interests with an Overdrawn event!
+                        : Accepted(asList(Withdrawn(amount), Overdrawn()))
+                )
+                // sorry, no...
+                .orElse(Refused(InsufficientFunds()))
+        )
+        .otherwise(
+            Refused(AccountUnopened())
+        );
   }
 
   @Override
   public Function<AccountState, AccountCommandDecision> Credit(Amount amount) {
 
     return AccountStates.cases()
-
-        .Opened(__ -> Accepted(singletonList(Credited(amount))))
-
-        .otherwise(Refused(AccountUnopened()));
+        // Command is only valid on opened account
+        .Opened(
+            Accepted(Credited(amount))
+        )
+        .otherwise(
+            Refused(AccountUnopened())
+        );
   }
 }

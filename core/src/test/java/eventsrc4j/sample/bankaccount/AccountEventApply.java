@@ -11,7 +11,7 @@ public abstract class AccountEventApply {
 
   private static final Function<AccountEvent, Function<AccountState, AccountState>> ApplyEvent =
 
-      AccountEvents.cases().<Function<AccountState, AccountState>>Created(
+      AccountEvents.cases().<Function<AccountState, AccountState>>Opened(
 
           (accountNumber, initialDeposit, minBalance) -> __ -> Opened(
               AccountState0(initialDeposit.value(), minBalance)))

@@ -13,6 +13,7 @@ import static eventsrc4j.sample.bankaccount.OpenedAccounts.getBalance;
 import static eventsrc4j.sample.bankaccount.OpenedAccounts.getMinBalance;
 import static eventsrc4j.sample.bankaccount.OpenedAccounts.modBalance0;
 import static eventsrc4j.sample.bankaccount.OpenedAccounts.setBalance0;
+import static java.math.BigDecimal.ZERO;
 
 @Data(@Derive(withVisibility = Visibility.Smart))
 public abstract class OpenedAccount {
@@ -25,14 +26,14 @@ public abstract class OpenedAccount {
   }
 
   @ExportAsPublic
-  static Optional<OpenedAccount> Open(Amount initialDeposit, BigDecimal minBalance) {
+  static Optional<OpenedAccount> ifSufficientDeposit(Amount initialDeposit, BigDecimal minBalance) {
 
     return minBalance.compareTo(initialDeposit.value()) <= 0
         ? Optional.of(AccountState0(initialDeposit.value(), minBalance))
         : Optional.empty();
   }
 
-  public Optional<OpenedAccount> withdraw(Amount amount) {
+  public Optional<OpenedAccount> tryWithdraw(Amount amount) {
 
     BigDecimal newBalance = balance().subtract(amount.value());
 
@@ -43,6 +44,10 @@ public abstract class OpenedAccount {
 
   public OpenedAccount credit(Amount amount) {
     return modBalance0(b -> b.add(amount.value())).apply(this);
+  }
+
+  public boolean hasPositiveBalance() {
+    return ZERO.compareTo(balance()) <= 0;
   }
 
   public final BigDecimal balance() {

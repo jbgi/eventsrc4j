@@ -9,7 +9,7 @@ public abstract class AccountEvent {
   AccountEvent(){}
 
   public interface Cases<R> {
-    R Created(String accountNumber, Amount initialDeposit, BigDecimal minBalance);
+    R Opened(String accountNumber, Amount initialDeposit, BigDecimal minBalance);
 
     R Withdrawn(Amount amount);
 
