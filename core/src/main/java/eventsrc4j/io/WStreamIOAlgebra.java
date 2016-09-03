@@ -8,13 +8,13 @@ import java.time.Instant;
 import java.util.Optional;
 import java.util.function.Function;
 
-public interface WStreamActionIO<K, S, E, R> extends PureIO<R>, WStreamAction.Algebra<K, S, E, R, IO<R>> {
+public interface WStreamIOAlgebra<K, S, E, R> extends PureIO<R>, WStreamAction.Algebra<K, S, E, R, IO<R>> {
 
-  static <K, S, E, R> WStreamActionIO<K, S, E, R> ioAlgebra(WritableEventStream<K, S, E> eventStream) {
-    return new WStreamActionIO<K, S, E, R>() {
+  static <K, S, E, R> WStreamIOAlgebra<K, S, E, R> of(WritableEventStream<K, S, E> eventStream) {
+    return new WStreamIOAlgebra<K, S, E, R>() {
 
-      @Override public <Q> WStreamActionIO<K, S, E, Q> vary() {
-        return ioAlgebra(eventStream);
+      @Override public <Q> WStreamIOAlgebra<K, S, E, Q> vary() {
+        return of(eventStream);
       }
 
       @Override public IO<R> Write(Optional<S> expectedSeq, Instant time, Iterable<E> events,
@@ -37,5 +37,5 @@ public interface WStreamActionIO<K, S, E, R> extends PureIO<R>, WStreamAction.Al
     return action.eval(vary()).flatMap(q -> function.apply(q).eval(this));
   }
 
-  <Q> WStreamActionIO<K, S, E, Q> vary();
+  <Q> WStreamIOAlgebra<K, S, E, Q> vary();
 }

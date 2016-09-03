@@ -1,5 +1,7 @@
 package eventsrc4j.io;
 
+import eventsrc4j.StreamAction;
+import eventsrc4j.WStreamAction;
 import eventsrc4j.WriteResult;
 import java.time.Instant;
 import java.util.Optional;
@@ -24,5 +26,10 @@ public interface WritableEventStream<K, S, E> extends EventStream<K, S, E> {
    * optimistic concurrency error (duplicated sequence).
    */
   IO<WriteResult<K, S, E>> write(Optional<S> expectedSeq, Instant time, Iterable<E> events);
+
+  default <R> IO<R> evalWAction(WStreamAction<K, S, E, R> action) {
+    return action.eval(WStreamIOAlgebra.of(this));
+  }
+
 
 }

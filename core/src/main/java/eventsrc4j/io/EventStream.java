@@ -1,6 +1,7 @@
 package eventsrc4j.io;
 
 import eventsrc4j.Event;
+import eventsrc4j.StreamAction;
 import eventsrc4j.StreamReader;
 import eventsrc4j.io.IO;
 import java.util.Optional;
@@ -33,5 +34,9 @@ public interface EventStream<K, S, E> {
    * @return an IO action producing the single latest event, if found.
    */
   IO<Optional<Event<K, S, E>>> latest();
+
+  default <R> IO<R> evalAction(StreamAction<K, S, E, R> action) {
+    return action.eval(StreamIOAlgebra.of(this));
+  }
 
 }

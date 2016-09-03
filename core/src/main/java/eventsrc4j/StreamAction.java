@@ -1,5 +1,6 @@
 package eventsrc4j;
 
+import eventsrc4j.io.StreamIOAlgebra;
 import java.util.Optional;
 import java.util.function.Function;
 
@@ -11,7 +12,7 @@ import java.util.function.Function;
  * @param <E> concrete domain events type.
  * @param <R> action result type.
  *
- * @see eventsrc4j.io.StreamActionIO for an IO interpreter.
+ * @see StreamIOAlgebra for an IO interpreter.
  */
 @FunctionalInterface
 public interface StreamAction<K, S, E, R> {
@@ -36,6 +37,7 @@ public interface StreamAction<K, S, E, R> {
         }
       });
     }
+    
   }
 
   static <K, S, E, R> StreamAction<K, S, E, R> Read(Optional<S> fromSeq,

@@ -1,5 +1,6 @@
 package eventsrc4j;
 
+import eventsrc4j.io.WStreamIOAlgebra;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.function.Function;
@@ -11,7 +12,7 @@ import java.util.function.Function;
  * @param <S> sequence used for ordering events in the stream.
  * @param <E> concrete domain events type.
  * @param <R> action result type.
- * @see eventsrc4j.io.WStreamActionIO for an IO interpreter.
+ * @see WStreamIOAlgebra for an IO interpreter.
  */
 @FunctionalInterface
 public interface WStreamAction<K, S, E, R> {
