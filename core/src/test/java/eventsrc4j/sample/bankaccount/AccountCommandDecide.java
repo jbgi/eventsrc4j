@@ -3,8 +3,8 @@ package eventsrc4j.sample.bankaccount;
 import java.math.BigDecimal;
 import java.util.function.Function;
 
-import static eventsrc4j.sample.bankaccount.AccountCommandDecisions.Accepted;
-import static eventsrc4j.sample.bankaccount.AccountCommandDecisions.Refused;
+import static eventsrc4j.sample.bankaccount.AccountCommandDecisions.Accept;
+import static eventsrc4j.sample.bankaccount.AccountCommandDecisions.Refuse;
 import static eventsrc4j.sample.bankaccount.AccountCommandRefusedReasons.AccountAlreadyOpened;
 import static eventsrc4j.sample.bankaccount.AccountCommandRefusedReasons.AccountUnopened;
 import static eventsrc4j.sample.bankaccount.AccountCommandRefusedReasons.InsufficientFunds;
@@ -27,12 +27,12 @@ public final class AccountCommandDecide
         .Unopened(
             // initialDeposit must be > minBalance:
             ifSufficientDeposit(initialDeposit, minBalance)
-                .map(__ -> Accepted(Opened(accountNumber, initialDeposit, minBalance)))
+                .map(__ -> Accept(Opened(accountNumber, initialDeposit, minBalance)))
 
-                .orElse(Refused(InsufficientFunds()))
+                .orElse(Refuse(InsufficientFunds()))
         )
         .otherwise(
-            Refused(AccountAlreadyOpened())
+            Refuse(AccountAlreadyOpened())
         );
   }
 
@@ -46,15 +46,15 @@ public final class AccountCommandDecide
             account.tryWithdraw(amount)
                 .map(withdrawnAccount -> // yes!
                     withdrawnAccount.hasPositiveBalance()
-                        ? Accepted(Withdrawn(amount))
+                        ? Accept(Withdrawn(amount))
                         // but negative balance: let's trigger interests with an Overdrawn event!
-                        : Accepted(asList(Withdrawn(amount), Overdrawn()))
+                        : Accept(asList(Withdrawn(amount), Overdrawn()))
                 )
                 // sorry, no...
-                .orElse(Refused(InsufficientFunds()))
+                .orElse(Refuse(InsufficientFunds()))
         )
         .otherwise(
-            Refused(AccountUnopened())
+            Refuse(AccountUnopened())
         );
   }
 
@@ -64,10 +64,10 @@ public final class AccountCommandDecide
     return AccountStates.cases()
         // Command is only valid on opened account
         .Opened(
-            Accepted(Credited(amount))
+            Accept(Credited(amount))
         )
         .otherwise(
-            Refused(AccountUnopened())
+            Refuse(AccountUnopened())
         );
   }
 }

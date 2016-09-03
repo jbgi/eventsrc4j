@@ -17,21 +17,15 @@ import java.util.function.Function;
 public interface StreamAction<K, S, E, R> {
 
   /**
-   * Interpreter of base stream actions.
+   * Monadic StreamAction algebra.
    * @param <R> action result type.
    * @param <X> interpreted action result type (eg. wrapped in a container).
    */
-  interface Interpreter<K, S, E, R, X> {
+  interface Algebra<K, S, E, R, X> extends Pure<R, X> {
 
     X Read(Optional<S> fromSeq, StreamReader<K, S, E, R> streamReader);
 
     X Latest(Function<Optional<Event<K, S, E>>, R> eventReader);
-  }
-
-  /**
-   * Extends the interpreter to an (operational) monad algebra.
-   */
-  interface Algebra<K, S, E, R, X> extends Pure<R, X>, Interpreter<K, S, E, R, X> {
 
     <Q> X Bind(StreamAction<K, S, E, Q> action, Function<Q, StreamAction<K, S, E, R>> function);
 

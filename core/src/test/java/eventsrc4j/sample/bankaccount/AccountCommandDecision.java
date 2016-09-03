@@ -1,6 +1,5 @@
 package eventsrc4j.sample.bankaccount;
 
-import java.util.Collections;
 import java.util.List;
 import org.derive4j.Data;
 import org.derive4j.ExportAsPublic;
@@ -13,13 +12,13 @@ public abstract class AccountCommandDecision {
   AccountCommandDecision(){}
 
   public interface Cases<R> {
-    R Refused(AccountCommandRefusedReason reason);
-    R Accepted(List<AccountEvent> events);
+    R Refuse(AccountCommandRefusedReason reason);
+    R Accept(List<AccountEvent> events);
   }
 
   @ExportAsPublic
-  static AccountCommandDecision Accepted(AccountEvent event) {
-    return AccountCommandDecisions.Accepted(singletonList(event));
+  static AccountCommandDecision Accept(AccountEvent event) {
+    return AccountCommandDecisions.Accept(singletonList(event));
   }
 
 
