@@ -39,12 +39,6 @@ public abstract class Snapshot<S, V> {
      * @param seq Represents the point in the stream where the deletion occured.
      */
     R Deleted(S seq, Instant time);
-
-    /**
-     * Events have been saved but due to some events being unknown, the view could not be safely
-     * computed. This is used to prevent taking decision based on a wrong or partial view.
-     */
-    R Unavailable();
   }
 
   Snapshot() {
