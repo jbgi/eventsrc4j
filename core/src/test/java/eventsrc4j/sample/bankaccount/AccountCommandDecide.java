@@ -1,10 +1,13 @@
 package eventsrc4j.sample.bankaccount;
 
+import eventsrc4j.CommandDecision;
+import eventsrc4j.CommandDecisions;
 import java.math.BigDecimal;
 import java.util.function.Function;
 
-import static eventsrc4j.sample.bankaccount.AccountCommandDecisions.Accept;
-import static eventsrc4j.sample.bankaccount.AccountCommandDecisions.Refuse;
+import static eventsrc4j.CommandDecisions.Refuse;
+import static eventsrc4j.CommandDecisions.ifEvent;
+import static eventsrc4j.CommandDecisions.ifEvents;
 import static eventsrc4j.sample.bankaccount.AccountCommandRefusedReasons.AccountAlreadyOpened;
 import static eventsrc4j.sample.bankaccount.AccountCommandRefusedReasons.AccountUnopened;
 import static eventsrc4j.sample.bankaccount.AccountCommandRefusedReasons.InsufficientFunds;
@@ -14,60 +17,59 @@ import static eventsrc4j.sample.bankaccount.AccountEvents.Overdrawn;
 import static eventsrc4j.sample.bankaccount.AccountEvents.Withdrawn;
 import static eventsrc4j.sample.bankaccount.OpenedAccounts.ifSufficientDeposit;
 import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
 
 public final class AccountCommandDecide
-    implements AccountCommand.Cases<Function<AccountState, AccountCommandDecision>> {
+    implements AccountCommand.Cases<Function<AccountState, CommandDecision<AccountCommandRefusedReason, AccountEvent>>> {
 
   @Override
-  public Function<AccountState, AccountCommandDecision> Open(
-      String accountNumber, Amount initialDeposit, BigDecimal minBalance) {
+  public Function<AccountState, CommandDecision<AccountCommandRefusedReason, AccountEvent>> Open(
+      AccountNumber accountNumber, Amount initialDeposit, BigDecimal minBalance) {
 
     return AccountStates.cases()
         // Command is only valid on unopened account
         .Unopened(
             // initialDeposit must be > minBalance:
-            ifSufficientDeposit(initialDeposit, minBalance)
-                .map(__ -> Accept(Opened(accountNumber, initialDeposit, minBalance)))
+            ifEvent(
+                ifSufficientDeposit(initialDeposit, minBalance)
+                    .map(__ -> Opened(accountNumber, initialDeposit, minBalance)))
 
-                .orElse(Refuse(InsufficientFunds()))
-        )
+                .elseRefuseFor(InsufficientFunds()))
+
         .otherwise(
-            Refuse(AccountAlreadyOpened())
-        );
+            Refuse(AccountAlreadyOpened()));
   }
 
   @Override
-  public Function<AccountState, AccountCommandDecision> Withdraw(Amount amount) {
+  public Function<AccountState, CommandDecision<AccountCommandRefusedReason, AccountEvent>> Withdraw(Amount amount) {
 
     return AccountStates.cases()
         // Command is only valid on opened account
         .Opened(account ->
             // can be withdrawn without hitting min balance ?
-            account.tryWithdraw(amount)
-                .map(withdrawnAccount -> // yes!
-                    withdrawnAccount.hasPositiveBalance()
-                        ? Accept(Withdrawn(amount))
-                        // but negative balance: let's trigger interests with an Overdrawn event!
-                        : Accept(asList(Withdrawn(amount), Overdrawn()))
-                )
+            ifEvents(
+                account.tryWithdraw(amount)
+                    .map(withdrawnAccount -> // yes!
+                        withdrawnAccount.hasPositiveBalance()
+                            ? singletonList(Withdrawn(amount))
+                            // but negative balance: let's trigger interests with an Overdrawn event!
+                            : asList(Withdrawn(amount), Overdrawn())))
                 // sorry, no...
-                .orElse(Refuse(InsufficientFunds()))
-        )
+                .elseRefuseFor(InsufficientFunds()))
+
         .otherwise(
-            Refuse(AccountUnopened())
-        );
+            Refuse(AccountUnopened()));
   }
 
   @Override
-  public Function<AccountState, AccountCommandDecision> Credit(Amount amount) {
+  public Function<AccountState, CommandDecision<AccountCommandRefusedReason, AccountEvent>> Credit(Amount amount) {
 
     return AccountStates.cases()
         // Command is only valid on opened account
         .Opened(
-            Accept(Credited(amount))
-        )
+            CommandDecisions.<AccountCommandRefusedReason, AccountEvent>Accept(Credited(amount)))
+
         .otherwise(
-            Refuse(AccountUnopened())
-        );
+            Refuse(AccountUnopened()));
   }
 }

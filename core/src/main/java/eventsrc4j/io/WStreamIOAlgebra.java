@@ -34,7 +34,7 @@ public interface WStreamIOAlgebra<K, S, E, R> extends PureIO<R>, WStreamAction.A
 
   @Override default <Q> IO<R> Bind(WStreamAction<K, S, E, Q> action,
       Function<Q, WStreamAction<K, S, E, R>> function) {
-    return action.eval(vary()).flatMap(q -> function.apply(q).eval(this));
+    return action.eval(vary()).bind(q -> function.apply(q).eval(this));
   }
 
   <Q> WStreamIOAlgebra<K, S, E, Q> vary();

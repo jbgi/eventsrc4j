@@ -1,6 +1,9 @@
 package eventsrc4j;
 
+import eventsrc4j.io.ESActionIOAlgebra;
 import eventsrc4j.io.WStreamIOAlgebra;
+import java.time.Instant;
+import java.util.Optional;
 import java.util.function.Function;
 
 /**
@@ -11,7 +14,7 @@ import java.util.function.Function;
  * @param <E> concrete domain events type.
  * @param <V> concrete view type.
  * @param <R> action result type.
- * @see WStreamIOAlgebra for an IO interpreter.
+ * @see ESActionIOAlgebra for an IO interpreter.
  */
 @FunctionalInterface
 public interface ESAction<K, S, E, V, R> {
@@ -74,6 +77,22 @@ public interface ESAction<K, S, E, V, R> {
     }
   }
 
+  default <Q> ESAction<K, S, E, V, Q> bind(Function<R, ESAction<K, S, E, V, Q>> f) {
+    return new ESAction<K, S, E, V, Q>() {
+      @Override public <X> X eval(Algebra<K, S, E, V, Q, X> interpreter) {
+        return interpreter.Bind(ESAction.this, f);
+      }
+    };
+  }
+
+  static <K, S, E, V, R> ESAction<K, S, E, V, R> Pure(R value) {
+    return new ESAction<K, S, E, V, R>() {
+      @Override public <X> X eval(Algebra<K, S, E, V, R, X> interpreter) {
+        return interpreter.Pure(value);
+      }
+    };
+  }
+
   static <K, S, E, V, R> ESAction<K, S, E, V, R> of(WStreamAction<K, S, E, R> streamAction) {
     return streamAction::eval;
   }
@@ -91,4 +110,30 @@ public interface ESAction<K, S, E, V, R> {
   }
 
   <X> X eval(Algebra<K, S, E, V, R, X> interpreter);
+
+  interface DelegatingAlgebra<K, S, E, V, R, X> extends Algebra<K, S, E, V, R, X> {
+    SnapshotAction.Algebra<S, V, R, X> snapshotAlgebra();
+    WStreamAction.Algebra<K, S, E, R, X> wStreamAlgebra();
+
+    @Override default X Get(SequenceQuery<S> sequence, Function<Snapshot<S, V>, R> snapshotReader) {
+      return snapshotAlgebra().Get(sequence, snapshotReader);
+    }
+
+    @Override default X Put(Snapshot<S, V> snapshot, SnapshotStoreMode mode, Function<Snapshot<S, V>, R> id) {
+      return snapshotAlgebra().Put(snapshot, mode, id);
+    }
+
+    @Override default X Write(Optional<S> expectedSeq, Instant time, Iterable<E> events,
+        Function<WriteResult<K, S, E>, R> withResult) {
+      return wStreamAlgebra().Write(expectedSeq, time, events, withResult);
+    }
+
+    @Override default X Read(Optional<S> fromSeq, StreamReader<K, S, E, R> streamReader) {
+      return wStreamAlgebra().Read(fromSeq, streamReader);
+    }
+
+    @Override default X Latest(Function<Optional<Event<K, S, E>>, R> eventReader) {
+      return wStreamAlgebra().Latest(eventReader);
+    }
+  }
 }

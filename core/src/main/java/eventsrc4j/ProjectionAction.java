@@ -1,6 +1,5 @@
 package eventsrc4j;
 
-import eventsrc4j.io.WStreamIOAlgebra;
 import java.util.function.Function;
 
 /**
@@ -18,6 +17,7 @@ public interface ProjectionAction<K, S, E, V, R> {
 
   /**
    * Monadic WStreamAction algebra, that is also a StreamAction algebra
+   *
    * @param <R> action result type.
    * @param <X> interpreted action result type (eg. wrapped in a container).
    */
@@ -38,23 +38,23 @@ public interface ProjectionAction<K, S, E, V, R> {
     @Override
     default <Q> X Bind(StreamAction<K, S, E, Q> action,
         Function<Q, StreamAction<K, S, E, R>> function) {
-      return Bind(of(action), function.andThen(ProjectionAction::of));
+      return Bind(ProjectionAction.of(action), function.andThen(ProjectionAction::of));
     }
 
     @Override
     default <Q> X Map(StreamAction<K, S, E, Q> action, Function<Q, R> function) {
-      return Map(of(action), function);
+      return Map(ProjectionAction.of(action), function);
     }
 
     @Override
     default <Q> X Bind(SnapshotAction<S, V, Q> action,
         Function<Q, SnapshotAction<S, V, R>> function) {
-      return Bind(of(action), function.andThen(ProjectionAction::of));
+      return Bind(ProjectionAction.of(action), function.andThen(ProjectionAction::of));
     }
 
     @Override
     default <Q> X Map(SnapshotAction<S, V, Q> action, Function<Q, R> function) {
-      return Map(of(action), function);
+      return Map(ProjectionAction.of(action), function);
     }
   }
 
@@ -62,11 +62,37 @@ public interface ProjectionAction<K, S, E, V, R> {
     return streamAction::eval;
   }
 
-
   static <K, S, E, V, R> ProjectionAction<K, S, E, V, R> of(SnapshotAction<S, V, R> snapshotAction) {
     return snapshotAction::eval;
   }
 
-  <X> X eval(Algebra<K, S, E, V, R, X> interpreter);
+  static <K, S, E, V, R> ProjectionAction<K, S, E, V, R> Pure(R value) {
+    return new ProjectionAction<K, S, E, V, R>() {
+      @Override public <X> X eval(Algebra<K, S, E, V, R, X> interpreter) {
+        return interpreter.Pure(value);
+      }
+    };
+  }
 
+  default <Q> ProjectionAction<K, S, E, V, Q> map(Function<R, Q> f) {
+    return new ProjectionAction<K, S, E, V, Q>() {
+      @Override public <X> X eval(Algebra<K, S, E, V, Q, X> interpreter) {
+        return interpreter.Map(ProjectionAction.this, f);
+      }
+    };
+  }
+
+  default <Q> ProjectionAction<K, S, E, V, Q> bind(Function<R, ProjectionAction<K, S, E, V, Q>> f) {
+    return new ProjectionAction<K, S, E, V, Q>() {
+      @Override public <X> X eval(Algebra<K, S, E, V, Q, X> interpreter) {
+        return interpreter.Bind(ProjectionAction.this, f);
+      }
+    };
+  }
+
+  default ESAction<K, S, E, V, R> asESAction() {
+    return this::eval;
+  }
+
+  <X> X eval(Algebra<K, S, E, V, R, X> interpreter);
 }

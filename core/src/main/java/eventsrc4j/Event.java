@@ -9,6 +9,7 @@ import static eventsrc4j.Events.getDomainEvent;
 import static eventsrc4j.Events.getKey;
 import static eventsrc4j.Events.getSeq;
 import static eventsrc4j.Events.getTime;
+import static eventsrc4j.Snapshots.Value;
 
 /**
  * Event wraps the event payload (domain event) with common information
@@ -63,5 +64,9 @@ public abstract class Event<K, S, E> {
     return Events.<K, S, E>cases()
         .Event((key, seq, time, domainEvent) -> Event(kk.apply(key), ss.apply(seq), time,
             ee.apply(domainEvent)));
+  }
+
+  public <V> Snapshot<S, V> apply(Function<E, Function<V, V>> applyEventFunction, V previousState) {
+    return this.match((key, seq, time, domainEvent) -> Value(seq, time, applyEventFunction.apply(domainEvent).apply(previousState)));
   }
 }

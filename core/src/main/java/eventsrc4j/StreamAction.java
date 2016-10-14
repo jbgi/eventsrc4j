@@ -82,6 +82,11 @@ public interface StreamAction<K, S, E, R> {
     };
   }
 
+
+  default <V> ProjectionAction<K,S,E,V,R> asProjectionA() {
+    return this::eval;
+  }
+
   <X> X eval(Algebra<K, S, E, R, X> interpreter);
 
 }

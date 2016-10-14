@@ -94,5 +94,11 @@ public interface WStreamAction<K, S, E, R> {
     };
   }
 
+
+  default <V> ESAction<K, S, E, V, R> asESAction() {
+    return this::eval;
+  }
+
   <X> X eval(Algebra<K, S, E, R, X> interpreter);
+
 }

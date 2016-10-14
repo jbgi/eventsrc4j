@@ -25,7 +25,7 @@ public interface IO<A> {
     return () -> f.apply(IO.this.run());
   }
 
-  default <B> IO<B> flatMap(Function<A, IO<B>> f) {
+  default <B> IO<B> bind(Function<A, IO<B>> f) {
     return () -> f.apply(IO.this.run()).run();
   }
 }

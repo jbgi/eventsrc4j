@@ -2,6 +2,7 @@ package eventsrc4j.util;
 
 import java.util.Comparator;
 import java.util.Spliterator;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
@@ -65,7 +66,6 @@ public final class Streams {
               action.accept(a);
             }
           }) && continueTestDrop) {
-            ;
           }
           return !continueTestDrop;
         }
@@ -101,6 +101,37 @@ public final class Streams {
       @Override
       public Comparator<? super A> getComparator() {
         return spliterator.getComparator();
+      }
+    }, false);
+  }
+
+  public static <A, B> Stream<B> scanLeft(BiFunction<A, B, B> acc, B init, Stream<A> as) {
+    return StreamSupport.stream(new Spliterator<B>() {
+
+      final Spliterator<A> spliterator = as.spliterator();
+      B last = init;
+
+      @Override
+      public boolean tryAdvance(Consumer<? super B> action) {
+        return spliterator.tryAdvance(a -> {
+          last = acc.apply(a, last);
+          action.accept(last);
+        });
+      }
+
+      @Override
+      public Spliterator<B> trySplit() {
+        return null;
+      }
+
+      @Override
+      public long estimateSize() {
+        return spliterator.estimateSize();
+      }
+
+      @Override
+      public int characteristics() {
+        return spliterator.characteristics();
       }
     }, false);
   }

@@ -78,4 +78,8 @@ public interface SnapshotAction<S, V, R> {
   }
 
   <X> X eval(SnapshotAction.Algebra<S, V, R, X> interpreter);
+
+  default <K, E> ProjectionAction<K, S, E, V, R> asProjectionA() {
+    return this::eval;
+  }
 }
