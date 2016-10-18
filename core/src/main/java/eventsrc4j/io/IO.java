@@ -28,5 +28,9 @@ public interface IO<A> {
   default <B> IO<B> bind(Function<A, IO<B>> f) {
     return () -> f.apply(IO.this.run()).run();
   }
+
+  static <A> IO<A> io(IO<A> io) {
+    return io;
+  }
 }
 
