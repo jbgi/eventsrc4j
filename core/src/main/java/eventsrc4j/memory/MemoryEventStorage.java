@@ -63,14 +63,14 @@ public final class MemoryEventStorage<K, S, E> implements EventStorage<K, S, E>,
             // (because global sequence number are pre-allocated)
             new Predicate<Event<K, GlobalSeq<S>, E>>() {
 
-              S expectedGlobalSeq = fromSeq.map(GlobalSeqs::getGlobalSeq).orElse(sequence.first());
+              S nextExpectedGlobalSeq = fromSeq.map(GlobalSeqs::getGlobalSeq).orElse(sequence.first());
 
               @Override public boolean test(Event<K, GlobalSeq<S>, E> e) {
-                if (e.seq().globalSeq().equals(expectedGlobalSeq)) {
-                  expectedGlobalSeq = sequence.next(expectedGlobalSeq);
+                if (e.seq().globalSeq().equals(nextExpectedGlobalSeq)) {
+                  nextExpectedGlobalSeq = sequence.next(nextExpectedGlobalSeq);
                   return true;
                 }
-                return false;
+                return sequence.compare(e.seq().globalSeq(), nextExpectedGlobalSeq) < 0;
               }
             }
             ,
