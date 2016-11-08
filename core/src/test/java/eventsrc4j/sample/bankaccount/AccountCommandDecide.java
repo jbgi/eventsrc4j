@@ -24,7 +24,7 @@ public final class AccountCommandDecide
 
   @Override
   public Function<AccountState, CommandDecision<AccountCommandRefusedReason, AccountEvent>> Open(
-      AccountNumber accountNumber, Amount initialDeposit, BigDecimal minBalance) {
+      Amount initialDeposit, BigDecimal minBalance) {
 
     return AccountStates.cases()
         // Command is only valid on unopened account
@@ -32,7 +32,7 @@ public final class AccountCommandDecide
             // initialDeposit must be > minBalance:
             ifEvent(
                 ifSufficientDeposit(initialDeposit, minBalance)
-                    .map(__ -> Opened(accountNumber, initialDeposit, minBalance)))
+                    .map(__ -> Opened(initialDeposit, minBalance)))
 
                 .elseRefuseFor(InsufficientFunds()))
 

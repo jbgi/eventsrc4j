@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.util.Optional;
 import org.derive4j.Data;
 import org.derive4j.Derive;
+import org.derive4j.ExportAsPublic;
 import org.derive4j.Visibility;
 
 import static eventsrc4j.sample.bankaccount.Amounts.Amount0;
@@ -22,7 +23,8 @@ public abstract class Amount {
 
   public abstract <R> R match(Case<R> cases);
 
-  public static Optional<Amount> Amount(BigDecimal value) {
+  @ExportAsPublic
+  static Optional<Amount> Amount(BigDecimal value) {
     return BigDecimal.ZERO.compareTo(value) < 0
         ? Optional.of(Amount0(value))
         : Optional.empty();

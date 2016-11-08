@@ -14,7 +14,7 @@ public abstract class AccountCommand {
       return command.match(this);
     }
 
-    R Open(AccountNumber accountNumber, Amount initialDeposit, BigDecimal minBalance);
+    R Open(Amount initialDeposit, BigDecimal minBalance);
 
     R Withdraw(Amount amount);
 

@@ -12,7 +12,7 @@ public abstract class AccountEventApply {
   public static final Function<AccountEvent, Function<AccountState, AccountState>> ApplyEvent =
 
       AccountEvents.cases()
-          .<Function<AccountState, AccountState>>Opened((accountNumber, initialDeposit, minBalance) ->
+          .<Function<AccountState, AccountState>>Opened((initialDeposit, minBalance) ->
               __ -> Opened(AccountState0(initialDeposit.value(), minBalance)))
 
           .Withdrawn((Amount amount) ->
