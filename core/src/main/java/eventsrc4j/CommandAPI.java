@@ -4,8 +4,10 @@ import java.time.Instant;
 import java.util.List;
 import java.util.function.Function;
 
+import static eventsrc4j.CommandDecisions.caseOf;
 import static eventsrc4j.QueryAPI.queryAPI;
 import static eventsrc4j.Snapshots.getSeq;
+import static eventsrc4j.WriteResults.caseOf;
 
 public class CommandAPI<C, K, S, E, V, R> {
 
@@ -29,7 +31,7 @@ public class CommandAPI<C, K, S, E, V, R> {
       return Snapshots.<S, V>cases()
           .Value((seq, time, view) -> decideForState.apply(view))
           .NoSnapshot(() -> decideForState.apply(initialState))
-          .Deleted(CommandDecisions.Refuse(snapshotDeleteErrorReason));
+          .Deleted_(CommandDecisions.Refuse(snapshotDeleteErrorReason));
     }, queryAPI(applyEvent, initialState));
   }
 
@@ -42,7 +44,7 @@ public class CommandAPI<C, K, S, E, V, R> {
 
     return queryAPI.getLatest().asESAction().bind(latestSnapshot ->
 
-        CommandDecisions.<R, E>cases()
+        caseOf(decisionF.apply(latestSnapshot))
 
             .Refuse(r ->
                 ESAction.<K, S, E, V, CommandDecision<R, Event<K, S, E>>>Pure(CommandDecisions.Refuse(r)))
@@ -51,14 +53,12 @@ public class CommandAPI<C, K, S, E, V, R> {
 
                 WStreamAction.Write(getSeq(latestSnapshot), time, domainEvents,
                     Function.<WriteResult<K, S, E>>identity()).<V>asESAction()
-                    .bind(
-                        WriteResults.<K, S, E>cases()
+                    .bind(writeResult -> caseOf(writeResult)
                             .Success(events -> ESAction.<K, S, E, V, CommandDecision<R, Event<K, S, E>>>Pure(
                                 CommandDecisions.Accept(events)))
-
                             .DuplicateEventSeq(() -> handleAction(time, decisionF))
                     )
 
-            ).apply(decisionF.apply(latestSnapshot)));
+            ));
   }
 }

@@ -13,6 +13,8 @@ import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.stream.Stream;
 
+import static eventsrc4j.SequenceQueries.caseOf;
+import static eventsrc4j.SnapshotStoreModes.caseOf;
 import static eventsrc4j.Snapshots.NoSnapshot;
 import static eventsrc4j.io.IO.io;
 import static eventsrc4j.memory.GlobalSeqs.seq;
@@ -43,26 +45,24 @@ public final class MemorySnapshotStorage<K, S, V> implements SnapshotStorage<K, 
 
         @Override
         public IO<Snapshot<S, V>> get(SequenceQuery<S> sequence) {
-            return SequenceQueries.<S>cases()
+            return caseOf(sequence)
                     .Before(s -> io(() -> entryToSnapshot(snapshotsMap.lowerEntry(s))))
-                    .Earliest(() -> entryToSnapshot(snapshotsMap.firstEntry()))
-                    .Latest(() -> entryToSnapshot(snapshotsMap.lastEntry()))
-                    .apply(sequence);
+                    .Earliest_(() -> entryToSnapshot(snapshotsMap.firstEntry()))
+                    .Latest_(() -> entryToSnapshot(snapshotsMap.lastEntry()));
         }
 
         @Override
         public IO<Snapshot<S, V>> put(Snapshot<S, V> snapshot, SnapshotStoreMode mode) {
-            return snapshot.seq().map((s) -> SnapshotStoreModes.cases()
-                    .Epoch(io(() -> {
+            return snapshot.seq().map((s) -> caseOf(mode)
+                    .Epoch_(io(() -> {
                         snapshotsMap.put(s, snapshot);
                         snapshotsMap.headMap(s).clear();
                         return snapshot;
                     }))
-                    .Cache(() -> {
+                    .Cache_(() -> {
                         snapshotsMap.put(s, snapshot);
                         return snapshot;
-                    })
-                    .apply(mode))
+                    }))
                     .orElse(() -> snapshot);
         }
 

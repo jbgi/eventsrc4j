@@ -28,7 +28,7 @@ public final class AccountCommandDecide
 
     return AccountStates.cases()
         // Command is only valid on unopened account
-        .Unopened(
+        .Unopened_(
             // initialDeposit must be > minBalance:
             ifEvent(
                 ifSufficientDeposit(initialDeposit, minBalance)
@@ -36,7 +36,7 @@ public final class AccountCommandDecide
 
                 .elseRefuseFor(InsufficientFunds()))
 
-        .otherwise(
+        .otherwise_(
             Refuse(AccountAlreadyOpened()));
   }
 
@@ -57,7 +57,7 @@ public final class AccountCommandDecide
                 // sorry, no...
                 .elseRefuseFor(InsufficientFunds()))
 
-        .otherwise(
+        .otherwise_(
             Refuse(AccountUnopened()));
   }
 
@@ -66,10 +66,10 @@ public final class AccountCommandDecide
 
     return AccountStates.cases()
         // Command is only valid on opened account
-        .Opened(
+        .Opened_(
             CommandDecisions.<AccountCommandRefusedReason, AccountEvent>Accept(Credited(amount)))
 
-        .otherwise(
+        .otherwise_(
             Refuse(AccountUnopened()));
   }
 }

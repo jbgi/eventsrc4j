@@ -21,7 +21,7 @@ public abstract class AccountEventApply {
           .Credited((Amount amount) ->
               modOpenedAccount(modBalance0(balance -> balance.add(amount.value()))))
 
-          .Overdrawn(Function.identity());
+          .Overdrawn_(Function.identity());
 
   private AccountEventApply() {
   }
