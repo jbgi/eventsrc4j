@@ -1,16 +1,16 @@
 package eventsrc4j.memory;
 
-import java.util.function.BiFunction;
-import org.derive4j.Data;
+import eventsrc4j.data;
+import fj.F2;
 import org.derive4j.FieldNames;
 
-@Data
+@data
 public abstract class GlobalSeq<S> {
 
   GlobalSeq() {
   }
 
-  public abstract <R> R match(@FieldNames({"globalSeq", "seq"}) BiFunction<S, S, R> seq);
+  public abstract <R> R match(@FieldNames({"globalSeq", "seq"}) F2<S, S, R> seq);
 
   public final S globalSeq() {
     return GlobalSeqs.getGlobalSeq(this);

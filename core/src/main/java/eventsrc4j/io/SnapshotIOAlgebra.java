@@ -4,7 +4,8 @@ import eventsrc4j.SequenceQuery;
 import eventsrc4j.Snapshot;
 import eventsrc4j.SnapshotAction;
 import eventsrc4j.SnapshotStoreMode;
-import java.util.function.Function;
+import fj.F;
+import org.derive4j.hkt.TypeEq;
 
 public interface SnapshotIOAlgebra<S, V, R> extends PureIO<R>, SnapshotAction.Algebra<S, V, R, IO<R>> {
 
@@ -12,12 +13,12 @@ public interface SnapshotIOAlgebra<S, V, R> extends PureIO<R>, SnapshotAction.Al
 
     return new SnapshotIOAlgebra<S, V, R>() {
 
-      @Override public IO<R> Get(SequenceQuery<S> sequence, Function<Snapshot<S, V>, R> snapshotReader) {
-        return eventStream.get(sequence).map(snapshotReader);
+      @Override public IO<R> Get(SequenceQuery<S> sequence, TypeEq<Snapshot<S, V>, R> resultType) {
+        return eventStream.get(sequence).map(resultType::coerce);
       }
 
-      @Override public IO<R> Put(Snapshot<S, V> snapshot, SnapshotStoreMode mode, Function<Snapshot<S, V>, R> id) {
-        return eventStream.put(snapshot, mode).map(id);
+      @Override public IO<R> Put(Snapshot<S, V> snapshot, SnapshotStoreMode mode, TypeEq<Snapshot<S, V>, R> resultType) {
+        return eventStream.put(snapshot, mode).map(resultType::coerce);
       }
 
       @Override public <Q> SnapshotIOAlgebra<S, V, Q> vary() {
@@ -27,8 +28,8 @@ public interface SnapshotIOAlgebra<S, V, R> extends PureIO<R>, SnapshotAction.Al
     };
   }
 
-  @Override default <Q> IO<R> Bind(SnapshotAction<S, V, Q> action, Function<Q, SnapshotAction<S, V, R>> function) {
-    return action.eval(vary()).bind(q -> function.apply(q).eval(this));
+  @Override default <Q> IO<R> Bind(SnapshotAction<S, V, Q> action, F<Q, SnapshotAction<S, V, R>> function) {
+    return action.eval(vary()).bind(q -> function.f(q).eval(this));
   }
 
   <Q> SnapshotIOAlgebra<S, V, Q> vary();

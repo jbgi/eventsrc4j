@@ -1,9 +1,5 @@
 package eventsrc4j.io;
 
-import eventsrc4j.SequenceQuery;
-import eventsrc4j.Snapshot;
-import eventsrc4j.SnapshotStoreMode;
-
 /**
  * Implementations of this interface deal with persisting snapshots so that they don't need to be recomputed every time.
  * Specifically, implementations do NOT deal with generating snapshots, only storing/retrieving any persisted snapshot.

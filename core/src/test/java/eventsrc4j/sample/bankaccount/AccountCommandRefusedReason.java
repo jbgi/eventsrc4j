@@ -1,8 +1,8 @@
 package eventsrc4j.sample.bankaccount;
 
-import org.derive4j.Data;
+import eventsrc4j.data;
 
-@Data
+@data
 public abstract class AccountCommandRefusedReason {
 
   public interface Cases<R> {

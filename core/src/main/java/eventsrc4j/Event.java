@@ -1,8 +1,11 @@
 package eventsrc4j;
 
+import fj.Equal;
+import fj.F;
+import fj.Hash;
+import fj.Ord;
+import fj.Show;
 import java.time.Instant;
-import java.util.function.Function;
-import org.derive4j.Data;
 
 import static eventsrc4j.Events.Event;
 import static eventsrc4j.Events.getDomainEvent;
@@ -15,7 +18,7 @@ import static eventsrc4j.Snapshots.Value;
  * Event wraps the event payload (domain event) with common information
  * (event sequence number and time of the event)
  */
-@Data
+@data
 public abstract class Event<K, S, E> {
 
   public interface Case<K, S, E, R> {
@@ -59,14 +62,19 @@ public abstract class Event<K, S, E> {
   @Override
   public abstract String toString();
 
-  public static <K, S, E, KK, SS, EE> Function<Event<K, S, E>, Event<KK, SS, EE>> mapKSE(
-      Function<K, KK> kk, Function<S, SS> ss, Function<E, EE> ee) {
+  public static <K, S, E, KK, SS, EE> F<Event<K, S, E>, Event<KK, SS, EE>> mapKSE(
+      F<K, KK> kk, F<S, SS> ss, F<E, EE> ee) {
     return Events.<K, S, E>cases()
-        .Event((key, seq, time, domainEvent) -> Event(kk.apply(key), ss.apply(seq), time,
-            ee.apply(domainEvent)));
+        .Event((key, seq, time, domainEvent) -> Event(kk.f(key), ss.f(seq), time,
+            ee.f(domainEvent)));
   }
 
-  public <V> Snapshot<S, V> apply(Function<E, Function<V, V>> applyEventFunction, V previousState) {
-    return this.match((key, seq, time, domainEvent) -> Value(seq, time, applyEventFunction.apply(domainEvent).apply(previousState)));
+  public <V> Snapshot<S, V> apply(F<E, F<V, V>> applyEventFunction, V previousState) {
+    return this.match((key, seq, time, domainEvent) -> Value(seq, time, applyEventFunction.f(domainEvent).f(previousState)));
   }
+
+  static final Equal<Instant> instantEqual = Equal.anyEqual();
+  static final Hash<Instant> instantHash = Hash.anyHash();
+  static final Show<Instant> instantShow = Show.anyShow();
+  static final Ord<Instant> instantOrd = Ord.comparableOrd();
 }

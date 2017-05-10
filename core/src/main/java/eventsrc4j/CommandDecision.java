@@ -1,15 +1,13 @@
 package eventsrc4j;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-import org.derive4j.Data;
+import fj.data.List;
+import fj.data.Option;
 import org.derive4j.ExportAsPublic;
 
 import static eventsrc4j.CommandDecisions.Refuse;
-import static java.util.Collections.singletonList;
+import static fj.data.List.single;
 
-@Data
+@data
 public abstract class CommandDecision<R, E> {
 
   public interface Cases<R, E, X> {
@@ -27,20 +25,20 @@ public abstract class CommandDecision<R, E> {
 
   @ExportAsPublic
   static <R,E> CommandDecision<R, E> Accept(E event) {
-    return CommandDecisions.Accept(singletonList(event));
+    return CommandDecisions.Accept(single(event));
   }
 
 
   @ExportAsPublic
-  static <E> AcceptIfPresent<E> ifEvent(Optional<E> event) {
-    return ifEvents(event.map(Collections::singletonList));
+  static <E> AcceptIfPresent<E> ifEvent(Option<E> event) {
+    return ifEvents(event.map(List::single));
   }
 
   @ExportAsPublic
-  static <E> AcceptIfPresent<E> ifEvents(Optional<List<E>> event) {
+  static <E> AcceptIfPresent<E> ifEvents(Option<List<E>> event) {
     return new AcceptIfPresent<E>() {
       @Override public <R> CommandDecision<R, E> elseRefuseFor(R reason) {
-        return event.map(e -> CommandDecisions.<R, E>Accept(e)).orElse(Refuse(reason));
+        return event.map(CommandDecisions::<R, E>Accept).orSome(Refuse(reason));
       }
     };
   }

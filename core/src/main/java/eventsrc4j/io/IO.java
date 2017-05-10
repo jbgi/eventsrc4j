@@ -1,8 +1,8 @@
 package eventsrc4j.io;
 
+import fj.F;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.function.Function;
 
 /**
  * An IO action. A recipe to produce a value, possibly via a side effect
@@ -21,12 +21,12 @@ public interface IO<A> {
     }
   }
 
-  default <B> IO<B> map(Function<A, B> f) {
-    return () -> f.apply(IO.this.run());
+  default <B> IO<B> map(F<A, B> f) {
+    return () -> f.f(IO.this.run());
   }
 
-  default <B> IO<B> bind(Function<A, IO<B>> f) {
-    return () -> f.apply(IO.this.run()).run();
+  default <B> IO<B> bind(F<A, IO<B>> f) {
+    return () -> f.f(IO.this.run()).run();
   }
 
   static <A> IO<A> io(IO<A> io) {

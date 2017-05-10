@@ -1,9 +1,10 @@
 package eventsrc4j.io;
 
 import eventsrc4j.ESAction;
-import java.util.function.Function;
+import fj.F;
 
 public interface ESActionIOAlgebra<K, S, E, V, R> extends PureIO<R>, ESAction.DelegatingAlgebra<K, S, E, V, R, IO<R>> {
+
 
   static <K, S, E, V, R> ESActionIOAlgebra<K, S, E, V, R> of(SnapshotIOAlgebra<S, V, R> snapshotIOAlgebra,
       WStreamIOAlgebra wStreamIOAlgebra) {
@@ -19,9 +20,9 @@ public interface ESActionIOAlgebra<K, S, E, V, R> extends PureIO<R>, ESAction.De
     };
   }
 
-  @Override default <Q> IO<R> Bind(ESAction<K, S, E, V, Q> action,
-      Function<Q, ESAction<K, S, E, V, R>> function) {
-    return action.eval(vary()).bind(q -> function.apply(q).eval(this));
+  @Override default <Q> IO<R> BindES(ESAction<K, S, E, V, Q> action,
+      F<Q, ESAction<K, S, E, V, R>> function) {
+    return action.eval(vary()).bind(q -> function.f(q).eval(this));
   }
 
   @Override SnapshotIOAlgebra<S, V, R> snapshotAlgebra();

@@ -1,9 +1,9 @@
 package eventsrc4j.sample.bankaccount;
 
+import eventsrc4j.data;
 import java.math.BigDecimal;
-import org.derive4j.Data;
 
-@Data
+@data
 public abstract class AccountEvent {
 
   AccountEvent(){}

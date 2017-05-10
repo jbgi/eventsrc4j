@@ -1,16 +1,16 @@
 package eventsrc4j.sample.bankaccount;
 
+import eventsrc4j.data;
+import fj.F;
 import java.math.BigDecimal;
-import java.util.function.Function;
-import org.derive4j.Data;
 
-@Data
+@data
 public abstract class AccountCommand {
 
   AccountCommand(){}
 
-  public interface Cases<R> extends Function<AccountCommand, R> {
-    @Override default R apply(AccountCommand command) {
+  public interface Cases<R> extends F<AccountCommand, R> {
+    @Override default R f(AccountCommand command) {
       return command.match(this);
     }
 

@@ -1,12 +1,12 @@
 package eventsrc4j.sample.bankaccount;
 
-import java.util.List;
-import org.derive4j.Data;
+import eventsrc4j.data;
+import fj.data.List;
 import org.derive4j.ExportAsPublic;
 
-import static java.util.Collections.singletonList;
+import static fj.data.List.single;
 
-@Data
+@data
 public abstract class AccountCommandDecision {
 
   AccountCommandDecision(){}
@@ -18,7 +18,7 @@ public abstract class AccountCommandDecision {
 
   @ExportAsPublic
   static AccountCommandDecision Accept(AccountEvent event) {
-    return AccountCommandDecisions.Accept(singletonList(event));
+    return AccountCommandDecisions.Accept(single(event));
   }
 
 

@@ -1,6 +1,6 @@
 package eventsrc4j.io;
 
-import java.util.function.Function;
+import fj.F;
 
 /**
  * A source of events.
@@ -20,9 +20,9 @@ public interface EventStorage<K, S, E> {
    */
   WritableEventStream<K, S, E> stream(K key);
 
-  default <KK, SS, EE> EventStorage<KK, SS, EE> xmap(Function<K, KK> kk, Function<KK, K> k,
-      Function<S, SS> ss, Function<SS, S> s, Function<E, EE> ee,
-      Function<EE, E> e) {
+  default <KK, SS, EE> EventStorage<KK, SS, EE> xmap(F<K, KK> kk, F<KK, K> k,
+      F<S, SS> ss, F<SS, S> s, F<E, EE> ee,
+      F<EE, E> e) {
 
     //TODO
     throw new UnsupportedOperationException();

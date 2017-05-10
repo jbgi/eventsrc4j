@@ -2,8 +2,9 @@ package eventsrc4j.sample.bankaccount;
 
 import eventsrc4j.CommandDecision;
 import eventsrc4j.CommandDecisions;
+import fj.F;
+import fj.data.List;
 import java.math.BigDecimal;
-import java.util.function.Function;
 
 import static eventsrc4j.CommandDecisions.Refuse;
 import static eventsrc4j.CommandDecisions.ifEvent;
@@ -16,14 +17,13 @@ import static eventsrc4j.sample.bankaccount.AccountEvents.Opened;
 import static eventsrc4j.sample.bankaccount.AccountEvents.Overdrawn;
 import static eventsrc4j.sample.bankaccount.AccountEvents.Withdrawn;
 import static eventsrc4j.sample.bankaccount.OpenedAccounts.ifSufficientDeposit;
-import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
+import static fj.data.List.single;
 
 public final class AccountCommandDecide
-    implements AccountCommand.Cases<Function<AccountState, CommandDecision<AccountCommandRefusedReason, AccountEvent>>> {
+    implements AccountCommand.Cases<F<AccountState, CommandDecision<AccountCommandRefusedReason, AccountEvent>>> {
 
   @Override
-  public Function<AccountState, CommandDecision<AccountCommandRefusedReason, AccountEvent>> Open(
+  public F<AccountState, CommandDecision<AccountCommandRefusedReason, AccountEvent>> Open(
       Amount initialDeposit, BigDecimal minBalance) {
 
     return AccountStates.cases()
@@ -41,7 +41,7 @@ public final class AccountCommandDecide
   }
 
   @Override
-  public Function<AccountState, CommandDecision<AccountCommandRefusedReason, AccountEvent>> Withdraw(Amount amount) {
+  public F<AccountState, CommandDecision<AccountCommandRefusedReason, AccountEvent>> Withdraw(Amount amount) {
 
     return AccountStates.cases()
         // Command is only valid on opened account
@@ -51,9 +51,9 @@ public final class AccountCommandDecide
                 account.tryWithdraw(amount)
                     .map(withdrawnAccount -> // yes!
                         withdrawnAccount.hasPositiveBalance()
-                            ? singletonList(Withdrawn(amount))
+                            ? single(Withdrawn(amount))
                             // but negative balance: let's trigger interests with an Overdrawn event!
-                            : asList(Withdrawn(amount), Overdrawn())))
+                            : List.arrayList(Withdrawn(amount), Overdrawn())))
                 // sorry, no...
                 .elseRefuseFor(InsufficientFunds()))
 
@@ -62,7 +62,7 @@ public final class AccountCommandDecide
   }
 
   @Override
-  public Function<AccountState, CommandDecision<AccountCommandRefusedReason, AccountEvent>> Credit(Amount amount) {
+  public F<AccountState, CommandDecision<AccountCommandRefusedReason, AccountEvent>> Credit(Amount amount) {
 
     return AccountStates.cases()
         // Command is only valid on opened account

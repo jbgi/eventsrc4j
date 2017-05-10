@@ -1,10 +1,9 @@
 package eventsrc4j.io;
 
-import eventsrc4j.StreamAction;
 import eventsrc4j.WStreamAction;
 import eventsrc4j.WriteResult;
+import fj.data.Option;
 import java.time.Instant;
-import java.util.Optional;
 
 /**
  * A stream of events, that can be read and written into.
@@ -25,7 +24,7 @@ public interface WritableEventStream<K, S, E> extends EventStream<K, S, E> {
    * @return an IO action producing the result of the write; either successful or indicating an
    * optimistic concurrency error (duplicated sequence).
    */
-  IO<WriteResult<K, S, E>> write(Optional<S> expectedSeq, Instant time, Iterable<E> events);
+  IO<WriteResult<K, S, E>> write(Option<S> expectedSeq, Instant time, Iterable<E> events);
 
   default <R> IO<R> evalWAction(WStreamAction<K, S, E, R> action) {
     return action.eval(WStreamIOAlgebra.of(this));

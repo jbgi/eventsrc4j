@@ -1,9 +1,9 @@
 package eventsrc4j.sample.bankaccount;
 
+import eventsrc4j.data;
 import java.util.function.Function;
-import org.derive4j.Data;
 
-@Data
+@data
 public abstract class AccountState {
 
   public interface Cases<R> {

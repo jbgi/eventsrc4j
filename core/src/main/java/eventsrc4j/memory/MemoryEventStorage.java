@@ -2,35 +2,43 @@ package eventsrc4j.memory;
 
 import eventsrc4j.Event;
 import eventsrc4j.Events;
+import eventsrc4j.Fold;
 import eventsrc4j.Sequence;
-import eventsrc4j.StreamReader;
+import eventsrc4j.Step;
+import eventsrc4j.Steps;
 import eventsrc4j.WriteResult;
 import eventsrc4j.WriteResults;
 import eventsrc4j.io.EventStorage;
 import eventsrc4j.io.EventStream;
 import eventsrc4j.io.IO;
 import eventsrc4j.io.WritableEventStream;
+import fj.F;
+import fj.F2;
+import fj.data.Option;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import static eventsrc4j.WriteResults.Success;
 import static eventsrc4j.memory.GlobalSeqs.seq;
 import static eventsrc4j.util.Streams.dropWhile;
+import static eventsrc4j.util.Streams.scanLeft;
 import static eventsrc4j.util.Streams.takeWhile;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.unmodifiableList;
-import static java.util.Optional.ofNullable;
+import static fj.Function.identity;
+import static fj.data.Java8.F_Function;
+import static fj.data.List.iterableList;
+import static fj.data.List.nil;
+import static fj.data.Option.fromNull;
 
 public final class MemoryEventStorage<K, S, E> implements EventStorage<K, S, E>, EventStream<K, GlobalSeq<S>, E> {
 
@@ -47,6 +55,15 @@ public final class MemoryEventStorage<K, S, E> implements EventStorage<K, S, E>,
     nextGlobalSeq = new AtomicReference<>(sequence.first());
   }
 
+  private static <K, S, E> Stream<Event<K, GlobalSeq<S>, E>> flattenGlobalStream(
+      ConcurrentNavigableMap<S, List<Event<K, S, E>>> eventMap) {
+    return eventMap
+        .entrySet()
+        .stream()
+        .flatMap(entry -> entry.getValue()
+            .stream()
+            .map(F_Function(Events.modSeq(s -> seq(entry.getKey(), s)))));
+  }
 
   @Override
   public WritableEventStream<K, S, E> stream(K key) {
@@ -54,44 +71,56 @@ public final class MemoryEventStorage<K, S, E> implements EventStorage<K, S, E>,
   }
 
   @Override
-  public <R> IO<R> read(Optional<GlobalSeq<S>> fromSeq,
-      StreamReader<K, GlobalSeq<S>, E, R> streamReader) {
+  public <R> IO<R> read(Option<GlobalSeq<S>> fromSeq,
+      Fold<Event<K, GlobalSeq<S>, E>, R> streamFold) {
 
-    return () -> streamReader.apply(
-        takeWhile(
-            // We limit the stream to consecutive sequence otherwise we could miss some not yet inserted events
-            // (because global sequence number are pre-allocated)
-            new Predicate<Event<K, GlobalSeq<S>, E>>() {
+    return () -> streamFold.match(
+        new Fold.Case<Event<K, GlobalSeq<S>, E>, R, R>() {
+          @Override
+          public <Stepper> R fold(Stepper init,
+              F2<Stepper, Event<K, GlobalSeq<S>, E>, Step<R, Stepper>> onElement,
+              F<Stepper, R> onEndOfStream, Supplier<R> onEmpty) {
 
-              S nextExpectedGlobalSeq = fromSeq.map(GlobalSeqs::getGlobalSeq).orElse(sequence.first());
+            return scanLeft(
+                (event, stepper) -> stepper.bind(s -> onElement.f(s, event)), Steps.<R, Stepper>yield(init),
+                takeWhile(
+                    // We limit the stream to consecutive sequence otherwise we could miss some not yet inserted events
+                    // (because global sequence number are pre-allocated)
+                    new Predicate<Event<K, GlobalSeq<S>, E>>() {
 
-              @Override public boolean test(Event<K, GlobalSeq<S>, E> e) {
-                if (e.seq().globalSeq().equals(nextExpectedGlobalSeq)) {
-                  nextExpectedGlobalSeq = sequence.next(nextExpectedGlobalSeq);
-                  return true;
-                }
-                return sequence.compare(e.seq().globalSeq(), nextExpectedGlobalSeq) < 0;
-              }
-            }
-            ,
-            fromSeq.map(fromSeqExlusive ->
-                dropWhile(
-                    (Event<K, GlobalSeq<S>, E> e) ->
-                        e.seq().globalSeq().equals(fromSeqExlusive.globalSeq())
-                            && sequence.compare(e.seq().seq(), fromSeqExlusive.seq()) <= 0,
+                      S nextExpectedGlobalSeq = fromSeq.map(GlobalSeqs::getGlobalSeq).orSome(sequence.first());
 
-                    flattenGlobalStream(globalStream.tailMap(fromSeqExlusive.globalSeq()))
-                )
-            ).orElse(flattenGlobalStream(globalStream))
-        )
+                      @Override public boolean test(Event<K, GlobalSeq<S>, E> e) {
+                        if (e.seq().globalSeq().equals(nextExpectedGlobalSeq)) {
+                          nextExpectedGlobalSeq = sequence.next(nextExpectedGlobalSeq);
+                          return true;
+                        }
+                        return sequence.compare(e.seq().globalSeq(), nextExpectedGlobalSeq) < 0;
+                      }
+                    }
+                    ,
+                    fromSeq.map(fromSeqExlusive ->
+                        dropWhile(
+                            (Event<K, GlobalSeq<S>, E> e) ->
+                                e.seq().globalSeq().equals(fromSeqExlusive.globalSeq())
+                                    && sequence.compare(e.seq().seq(), fromSeqExlusive.seq()) <= 0,
+
+                            flattenGlobalStream(globalStream.tailMap(fromSeqExlusive.globalSeq()))
+                        )
+                    ).orSome(flattenGlobalStream(globalStream))
+                )).reduce((s1, s2) -> s2)
+                .map(s -> Steps.caseOf(s).done(identity()).yield(onEndOfStream))
+                .orElseGet(onEmpty);
+          }
+        }
     );
   }
 
   @Override
-  public IO<Optional<Event<K, GlobalSeq<S>, E>>> latest() {
-    return () -> ofNullable(globalStream.lastEntry()).map(
+  public IO<Option<Event<K, GlobalSeq<S>, E>>> latest() {
+    return () -> fromNull(globalStream.lastEntry()).map(
         e -> Events.<K, S, E, GlobalSeq<S>>modSeq(s -> seq(e.getKey(), s))
-            .apply(e.getValue().get(e.getValue().size() - 1)));
+            .f(e.getValue().get(e.getValue().size() - 1)));
   }
 
   private final class MemoryWritableEventStream implements WritableEventStream<K, S, E> {
@@ -106,13 +135,13 @@ public final class MemoryEventStorage<K, S, E> implements EventStorage<K, S, E>,
       this.key = key;
     }
 
-    @Override public IO<WriteResult<K, S, E>> write(Optional<S> expectedSeq, Instant time,
+    @Override public IO<WriteResult<K, S, E>> write(Option<S> expectedSeq, Instant time,
         Iterable<E> events) {
       return () -> {
 
         ArrayList<Event<K, S, E>> persistedEvents = new ArrayList<>();
 
-        S seq = expectedSeq.map(sequence::next).orElse(sequence.first());
+        S seq = expectedSeq.map(sequence::next).orSome(sequence.first());
 
         Iterator<E> iterator = events.iterator();
         while (iterator.hasNext()) {
@@ -131,7 +160,7 @@ public final class MemoryEventStorage<K, S, E> implements EventStorage<K, S, E>,
       };
     }
 
-    private List<Event<K, S, E>> commitSuccessfulWrite(ArrayList<Event<K, S, E>> persistedEvents, S nextSeq) {
+    private fj.data.List<Event<K, S, E>> commitSuccessfulWrite(ArrayList<Event<K, S, E>> persistedEvents, S nextSeq) {
       if (!persistedEvents.isEmpty()) {
         persistedEvents.trimToSize();
 
@@ -143,34 +172,34 @@ public final class MemoryEventStorage<K, S, E> implements EventStorage<K, S, E>,
                 ? nextSeq
                 : s);
 
-        return unmodifiableList(persistedEvents);
+        return iterableList(persistedEvents);
       }
-      return emptyList();
+      return nil();
     }
 
-    @Override public <R> IO<R> read(Optional<S> fromSeq, StreamReader<K, S, E, R> streamReader) {
-      return () -> streamReader.apply(
-          fromSeq.map(
-              fromSeqExclusive -> streamMap.subMap(fromSeqExclusive, false, seqFollowingLastCommit.get(), false))
-              .orElseGet(() -> streamMap.headMap(seqFollowingLastCommit.get()))
-              .values()
-              .stream()
-      );
+    @Override public <R> IO<R> read(Option<S> fromSeq, Fold<Event<K, S, E>, R> streamFold) {
+      return () -> streamFold.match(new Fold.Case<Event<K, S, E>, R, R>() {
+        @Override
+        public <Stepper> R fold(Stepper init, F2<Stepper, Event<K, S, E>, Step<R, Stepper>> onElement,
+            F<Stepper, R> onEndOfStream, Supplier<R> onEmpty) {
+
+          return scanLeft(
+              (event, stepper) -> stepper.bind(s -> onElement.f(s, event)), Steps.<R, Stepper>yield(init),
+              fromSeq.map(
+                  fromSeqExclusive -> streamMap.subMap(fromSeqExclusive, false, seqFollowingLastCommit.get(), false))
+                  .orSome(() -> streamMap.headMap(seqFollowingLastCommit.get()))
+                  .values()
+                  .stream()
+          ).reduce((s1, s2) -> s2)
+              .map(s -> Steps.caseOf(s).done(identity()).yield(onEndOfStream))
+              .orElseGet(onEmpty);
+        }
+      });
     }
 
-    @Override public IO<Optional<Event<K, S, E>>> latest() {
-      return () -> ofNullable(streamMap.lowerEntry(seqFollowingLastCommit.get()))
+    @Override public IO<Option<Event<K, S, E>>> latest() {
+      return () -> fromNull(streamMap.lowerEntry(seqFollowingLastCommit.get()))
           .map(Map.Entry::getValue);
     }
-  }
-
-  private static <K, S, E> Stream<Event<K, GlobalSeq<S>, E>> flattenGlobalStream(
-      ConcurrentNavigableMap<S, List<Event<K, S, E>>> eventMap) {
-    return eventMap
-        .entrySet()
-        .stream()
-        .flatMap(entry -> entry.getValue()
-            .stream()
-            .map(Events.modSeq(s -> seq(entry.getKey(), s))));
   }
 }

@@ -1,11 +1,9 @@
 package eventsrc4j;
 
-import org.derive4j.Data;
-
 /**
  * Mode of storage of a given snapshot: either as the earliest point in the event stream (Epoch) or not (Cache)
  */
-@Data
+@data
 public abstract class SnapshotStoreMode {
   SnapshotStoreMode(){}
 

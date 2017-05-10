@@ -1,10 +1,9 @@
 package eventsrc4j.io;
 
 import eventsrc4j.Event;
+import eventsrc4j.Fold;
 import eventsrc4j.StreamAction;
-import eventsrc4j.StreamReader;
-import eventsrc4j.io.IO;
-import java.util.Optional;
+import fj.data.Option;
 import java.util.stream.Stream;
 
 /**
@@ -17,23 +16,23 @@ import java.util.stream.Stream;
 public interface EventStream<K, S, E> {
 
   /**
-   * Read the stream of events, in order of sequence, from the underlying data store.
+   * ReadEventStream the stream of events, in order of sequence, from the underlying data store.
    *
+   * @param <R> the results of the stream fold. Must NOT reference the folded {@link Stream}.
    * @param fromSeq The starting sequence to read events from (exclusive). Empty to read from the
    * start.
-   * @param streamReader a fold on the stream of events.
-   * @param <R> the results of the stream fold. Must NOT reference the folded {@link Stream}.
+   * @param streamFold a fold on the stream of events.
    * @return an IO action producing the result of the stream fold. The {@link Stream} is closed and
    * unreadable after execution of the action.
    */
-  <R> IO<R> read(Optional<S> fromSeq, StreamReader<K, S, E, R> streamReader);
+  <R> IO<R> read(Option<S> fromSeq, Fold<Event<K, S, E>, R> streamFold);
 
   /**
-   * Get the latest event of the stream.
+   * GetSnapshot the latest event of the stream.
    *
    * @return an IO action producing the single latest event, if found.
    */
-  IO<Optional<Event<K, S, E>>> latest();
+  IO<Option<Event<K, S, E>>> latest();
 
   default <R> IO<R> evalAction(StreamAction<K, S, E, R> action) {
     return action.eval(StreamIOAlgebra.of(this));

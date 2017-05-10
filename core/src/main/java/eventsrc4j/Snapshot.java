@@ -1,8 +1,11 @@
 package eventsrc4j;
 
+import fj.Equal;
+import fj.Hash;
+import fj.Ord;
+import fj.Show;
+import fj.data.Option;
 import java.time.Instant;
-import java.util.Optional;
-import org.derive4j.Data;
 
 import static eventsrc4j.Snapshots.getSeq;
 import static eventsrc4j.Snapshots.getTime;
@@ -15,7 +18,7 @@ import static eventsrc4j.Snapshots.getView;
  *
  * @tparam V The type of the value wrapped by the Snapshot
  */
-@Data
+@data
 public abstract class Snapshot<S, V> {
 
   public interface Cases<S, V, R> {
@@ -46,15 +49,15 @@ public abstract class Snapshot<S, V> {
 
   public abstract <R> R match(Cases<S, V, R> cases);
 
-  public final Optional<S> seq() {
+  public final Option<S> seq() {
     return getSeq(this);
   }
 
-  public final Optional<Instant> time() {
+  public final Option<Instant> time() {
     return getTime(this);
   }
 
-  public final Optional<V> view() {
+  public final Option<V> view() {
     return getView(this);
   }
 
@@ -66,4 +69,9 @@ public abstract class Snapshot<S, V> {
 
   @Override
   public abstract String toString();
+
+  static final Equal<Instant> instantEqual = Equal.anyEqual();
+  static final Hash<Instant> instantHash = Hash.anyHash();
+  static final Show<Instant> instantShow = Show.anyShow();
+  static final Ord<Instant> instantOrd = Ord.comparableOrd();
 }

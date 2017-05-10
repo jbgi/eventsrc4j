@@ -2,24 +2,22 @@ package eventsrc4j;
 
 import eventsrc4j.io.EventStorage;
 import eventsrc4j.io.WritableEventStream;
+import fj.data.List;
+import fj.data.Option;
 import fj.test.Gen;
 import fj.test.Property;
 import java.time.Instant;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-import static eventsrc4j.WStreamAction.Read;
-import static eventsrc4j.WStreamAction.Write;
+import static fj.data.List.nil;
+import static fj.data.List.single;
+import static fj.data.Option.none;
 import static fj.test.Property.prop;
 import static fj.test.Property.property;
-import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.toList;
 
-public final class EventStorageSpec<K, S, E> {
+public final class EventStorageSpec<K, S, E> implements WStreamAction.Factory<K, S, E> {
 
   private final Gen<K> keys;
 
@@ -35,8 +33,8 @@ public final class EventStorageSpec<K, S, E> {
 
       WritableEventStream<K, S, E> stream = eventStorage.stream(key);
 
-      Optional<S> lastSeq =
-          stream.read(Optional.empty(), s -> s.reduce((first, second) -> second))
+      Option<S> lastSeq =
+          stream.read(none(), Fold.last())
               .runUnchecked()
               .map(Events::getSeq);
 
@@ -46,11 +44,11 @@ public final class EventStorageSpec<K, S, E> {
 
       return prop(
           writeResult.events().map(
-              writtenEvents -> writtenEvents.size() == 1
+              writtenEvents -> writtenEvents.length() == 1
                   && writtenEvents.equals(stream
-                  .read(lastSeq, s -> s.collect(toList()))
+                  .read(lastSeq, Fold.toList())
                   .runUnchecked())
-          ).orElse(false)
+          ).orSome(false)
       );
     });
   }
@@ -59,19 +57,20 @@ public final class EventStorageSpec<K, S, E> {
       Function<K, Predicate<WStreamAction<K, S, E, Boolean>>> actionInterpreter) {
     return property(keys, events, key -> event -> {
 
-      WStreamAction<K, S, E, Optional<S>> lastSeqA = Read(Optional.empty(),
-          s -> s.reduce((first, second) -> second).map(Events::getSeq));
+      WStreamAction<K, S, E, Option<S>> lastSeqA = ReadEventStream(Option.none(), Fold.last())
+          .map(last -> last.map(Events::getSeq));
 
       WStreamAction<K, S, E, Boolean> compareEventsA = lastSeqA.bind(lastSeq -> {
 
             WStreamAction<K, S, E, List<Event<K, S, E>>> writeEventsA =
-                Write(lastSeq, Instant.EPOCH, Collections.singletonList(event),
-                    writeResult -> writeResult.events().orElse(emptyList()));
+                WriteEvents(lastSeq, Instant.EPOCH, single(event))
+                    .map(WriteResults::getEvents)
+                    .map(es -> es.orSome(nil()));
 
-            WStreamAction<K, S, E, List<Event<K, S, E>>> readEventsA = Read(lastSeq, s -> s.collect(toList()));
+            WStreamAction<K, S, E, List<Event<K, S, E>>> readEventsA = ReadEventStream(lastSeq, Fold.toList());
 
             return writeEventsA.bind(writtenEvents ->
-                readEventsA.map(readEvents -> writtenEvents.size() == 1 && writtenEvents.equals(readEvents))
+                readEventsA.map(readEvents -> writtenEvents.length() == 1 && writtenEvents.equals(readEvents))
             );
           }
       );
@@ -85,22 +84,20 @@ public final class EventStorageSpec<K, S, E> {
 
       WritableEventStream<K, S, E> stream = eventStorage.stream(key);
 
-      Optional<S> lastSeq =
-          stream.read(Optional.empty(), s -> s.reduce((first, second) -> second))
+      Option<S> lastSeq =
+          stream.read(none(), Fold.last())
               .runUnchecked()
               .map(Events::getSeq);
 
       stream
-          .write(lastSeq, Instant.EPOCH, singletonList(event))
+          .write(lastSeq, Instant.EPOCH, single(event))
           .runUnchecked();
 
       WriteResult<K, S, E> concurrentWrite = stream
-          .write(lastSeq, Instant.EPOCH, singletonList(event))
+          .write(lastSeq, Instant.EPOCH, single(event))
           .runUnchecked();
 
-      return prop(
-          !concurrentWrite.events().isPresent()
-      );
+      return prop(concurrentWrite.events().isNone());
     });
   }
 }

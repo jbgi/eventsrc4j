@@ -1,8 +1,8 @@
 package eventsrc4j.util;
 
+import fj.F2;
 import java.util.Comparator;
 import java.util.Spliterator;
-import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
@@ -105,7 +105,7 @@ public final class Streams {
     }, false);
   }
 
-  public static <A, B> Stream<B> scanLeft(BiFunction<A, B, B> acc, B init, Stream<A> as) {
+  public static <A, B> Stream<B> scanLeft(F2<A, B, B> acc, B init, Stream<A> as) {
     return StreamSupport.stream(new Spliterator<B>() {
 
       final Spliterator<A> spliterator = as.spliterator();
@@ -114,7 +114,7 @@ public final class Streams {
       @Override
       public boolean tryAdvance(Consumer<? super B> action) {
         return spliterator.tryAdvance(a -> {
-          last = acc.apply(a, last);
+          last = acc.f(a, last);
           action.accept(last);
         });
       }

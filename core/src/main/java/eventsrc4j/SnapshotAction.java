@@ -1,7 +1,8 @@
 package eventsrc4j;
 
 import eventsrc4j.io.SnapshotIOAlgebra;
-import java.util.function.Function;
+import fj.F;
+import org.derive4j.hkt.TypeEq;
 
 /**
  * Actions on a snapshot
@@ -22,54 +23,46 @@ public interface SnapshotAction<S, V, R> {
    */
   interface Algebra<S, V, R, X> extends Pure<R, X> {
 
-    X Get(SequenceQuery<S> sequence, Function<Snapshot<S, V>, R> snapshotReader);
+    X Get(SequenceQuery<S> sequence, TypeEq<Snapshot<S, V>, R> resultType);
 
-    X Put(Snapshot<S, V> snapshot, SnapshotStoreMode mode, Function<Snapshot<S, V>, R> id);
+    X Put(Snapshot<S, V> snapshot, SnapshotStoreMode mode, TypeEq<Snapshot<S, V>, R> resultType);
 
-    <Q> X Bind(SnapshotAction<S, V, Q> action, Function<Q, SnapshotAction<S, V, R>> function);
+    <Q> X Bind(SnapshotAction<S, V, Q> action, F<Q, SnapshotAction<S, V, R>> function);
+  }
 
-    default <Q> X Map(SnapshotAction<S, V, Q> action, Function<Q, R> function) {
-      return Bind(action, q -> new SnapshotAction<S, V, R>() {
-        @Override public <X2> X2 eval(Algebra<S, V, R, X2> interpreter) {
-          return interpreter.Pure(function.apply(q));
+  static <S, V> Factory<S, V> factory() {
+    return new Factory<S, V>() {};
+  }
+
+  interface Factory<S, V> {
+
+    default SnapshotAction<S, V, Snapshot<S, V>> GetSnapshot(SequenceQuery<S> sequence) {
+      return new SnapshotAction<S, V, Snapshot<S, V>>() {
+        @Override public <X> X eval(Algebra<S, V, Snapshot<S, V>, X> interpreter) {
+          return interpreter.Get(sequence, TypeEq.refl());
         }
-      });
+      };
+    }
+
+    default SnapshotAction<S, V, Snapshot<S, V>> PutSnapshot(Snapshot<S, V> snapshot, SnapshotStoreMode mode) {
+      return new SnapshotAction<S, V, Snapshot<S, V>>() {
+        @Override public <X> X eval(Algebra<S, V, Snapshot<S, V>, X> interpreter) {
+          return interpreter.Put(snapshot, mode, TypeEq.refl());
+        }
+      };
+    }
+
+    default <R> SnapshotAction<S, V, R> PureSnapshotAction(R value) {
+      return new SnapshotAction<S, V, R>() {
+        @Override public <X> X eval(Algebra<S, V, R, X> interpreter) {
+          return interpreter.Pure(value);
+        }
+      };
     }
   }
 
-  static <S, V, R> SnapshotAction<S, V, R> Get(SequenceQuery<S> sequence, Function<Snapshot<S, V>, R> snapshotReader) {
-    return new SnapshotAction<S, V, R>() {
-      @Override public <X> X eval(Algebra<S, V, R, X> interpreter) {
-        return interpreter.Get(sequence, snapshotReader);
-      }
-    };
-  }
 
-  static <S, V> SnapshotAction<S, V, Snapshot<S, V>> Put(Snapshot<S, V> snapshot, SnapshotStoreMode mode) {
-    return new SnapshotAction<S, V, Snapshot<S, V>>() {
-      @Override public <X> X eval(Algebra<S, V, Snapshot<S, V>, X> interpreter) {
-        return interpreter.Put(snapshot, mode, s -> s);
-      }
-    };
-  }
-
-  static <S, V, R> SnapshotAction<S, V, R> Pure(R value) {
-    return new SnapshotAction<S, V, R>() {
-      @Override public <X> X eval(Algebra<S, V, R, X> interpreter) {
-        return interpreter.Pure(value);
-      }
-    };
-  }
-
-  default <Q> SnapshotAction<S, V, Q> map(Function<R, Q> f) {
-    return new SnapshotAction<S, V, Q>() {
-      @Override public <X> X eval(Algebra<S, V, Q, X> interpreter) {
-        return interpreter.Map(SnapshotAction.this, f);
-      }
-    };
-  }
-
-  default <Q> SnapshotAction<S, V, Q> bind(Function<R, SnapshotAction<S, V, Q>> f) {
+  default <Q> SnapshotAction<S, V, Q> bind(F<R, SnapshotAction<S, V, Q>> f) {
     return new SnapshotAction<S, V, Q>() {
       @Override public <X> X eval(Algebra<S, V, Q, X> interpreter) {
         return interpreter.Bind(SnapshotAction.this, f);
@@ -77,9 +70,11 @@ public interface SnapshotAction<S, V, R> {
     };
   }
 
+  default <Q> SnapshotAction<S, V, Q> map(F<R, Q> f) {
+    return bind(r -> SnapshotAction.<S, V>factory().PureSnapshotAction(f.f(r)));
+  }
+
+
   <X> X eval(SnapshotAction.Algebra<S, V, R, X> interpreter);
 
-  default <K, E> ProjectionAction<K, S, E, V, R> asProjectionA() {
-    return this::eval;
-  }
 }

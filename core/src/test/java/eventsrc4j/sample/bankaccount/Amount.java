@@ -1,8 +1,8 @@
 package eventsrc4j.sample.bankaccount;
 
+import eventsrc4j.data;
 import java.math.BigDecimal;
 import java.util.Optional;
-import org.derive4j.Data;
 import org.derive4j.Derive;
 import org.derive4j.ExportAsPublic;
 import org.derive4j.Visibility;
@@ -13,7 +13,8 @@ import static eventsrc4j.sample.bankaccount.Amounts.getValue;
 /**
  * A strictly positive amount of money.
  */
-@Data(@Derive(withVisibility = Visibility.Smart))
+@data
+@Derive(withVisibility = Visibility.Smart)
 public abstract class Amount {
   Amount() {}
 

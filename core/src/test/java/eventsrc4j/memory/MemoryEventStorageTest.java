@@ -2,7 +2,6 @@ package eventsrc4j.memory;
 
 import eventsrc4j.EventStorageSpec;
 import eventsrc4j.Sequence;
-import eventsrc4j.io.WStreamIOAlgebra;
 import fj.test.Arbitrary;
 import fj.test.Property;
 import fj.test.reflect.CheckParams;

@@ -1,12 +1,13 @@
 package eventsrc4j;
 
-import java.util.List;
-import java.util.Optional;
-import org.derive4j.Data;
+import fj.data.List;
+import fj.data.Option;
+import org.derive4j.Derive;
 
 import static eventsrc4j.WriteResults.getEvents;
 
-@Data
+@data
+@Derive({})
 public abstract class WriteResult<K, S, E> {
 
   WriteResult() {
@@ -20,7 +21,7 @@ public abstract class WriteResult<K, S, E> {
 
   public abstract <X> X match(Cases<K, S, E, X> cases);
 
-  public final Optional<List<Event<K, S, E>>> events() {
+  public final Option<List<Event<K, S, E>>> events() {
     return getEvents(this);
   }
 
@@ -32,4 +33,5 @@ public abstract class WriteResult<K, S, E> {
 
   @Override
   public abstract int hashCode();
+
 }

@@ -1,16 +1,22 @@
 package eventsrc4j.sample.bankaccount;
 
-import eventsrc4j.*;
-import eventsrc4j.io.*;
+import eventsrc4j.CommandAPI;
+import eventsrc4j.CommandDecision;
+import eventsrc4j.Event;
+import eventsrc4j.Fold;
+import eventsrc4j.Sequence;
+import eventsrc4j.io.ESActionIOAlgebra;
+import eventsrc4j.io.EventStorage;
+import eventsrc4j.io.IO;
+import eventsrc4j.io.SnapshotIOAlgebra;
+import eventsrc4j.io.SnapshotStorage;
+import eventsrc4j.io.WStreamIOAlgebra;
 import eventsrc4j.memory.MemoryEventStorage;
 import eventsrc4j.memory.MemorySnapshotStorage;
-
+import fj.data.Option;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.stream.Collectors;
 
 import static eventsrc4j.sample.bankaccount.AccountCommands.Credit;
 import static eventsrc4j.sample.bankaccount.AccountCommands.Open;
@@ -18,7 +24,6 @@ import static eventsrc4j.sample.bankaccount.AccountCommands.Withdraw;
 import static eventsrc4j.sample.bankaccount.AccountEventApply.ApplyEvent;
 import static eventsrc4j.sample.bankaccount.AccountNumbers.AccountNumber;
 import static eventsrc4j.sample.bankaccount.Amounts.Amount;
-import static java.util.stream.Collectors.toList;
 
 public final class AccountCommandService {
 
@@ -66,8 +71,8 @@ public final class AccountCommandService {
                         .bind(__ -> withdraw)
                         .bind(__ -> deposit)
                         .bind(__ -> openAccount)
-                        .bind(__ -> memoryEventStorage.stream(accountNumber).read(Optional.empty(), s -> s.collect(toList())))
-                        .bind(__ -> snapshotStorage.snapshots(accountNumber).get(SequenceQueries.Before(3L)))
+                        .bind(__ -> memoryEventStorage.stream(accountNumber).read(Option.none(), Fold.toList()))
+                        //.bind(__ -> snapshotStorage.snapshots(accountNumber).get(SequenceQueries.Before(3L)))
                         .run());
     }
 }

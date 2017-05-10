@@ -1,10 +1,14 @@
 package eventsrc4j.memory;
 
-import eventsrc4j.*;
+import eventsrc4j.Event;
+import eventsrc4j.Events;
+import eventsrc4j.Sequence;
+import eventsrc4j.SequenceQuery;
+import eventsrc4j.Snapshot;
+import eventsrc4j.SnapshotStoreMode;
 import eventsrc4j.io.IO;
 import eventsrc4j.io.SnapshotStorage;
 import eventsrc4j.io.SnapshotStream;
-
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -18,6 +22,7 @@ import static eventsrc4j.SnapshotStoreModes.caseOf;
 import static eventsrc4j.Snapshots.NoSnapshot;
 import static eventsrc4j.io.IO.io;
 import static eventsrc4j.memory.GlobalSeqs.seq;
+import static fj.data.Java8.F_Function;
 import static java.util.Optional.ofNullable;
 
 public final class MemorySnapshotStorage<K, S, V> implements SnapshotStorage<K, S, V> {
@@ -63,7 +68,7 @@ public final class MemorySnapshotStorage<K, S, V> implements SnapshotStorage<K, 
                         snapshotsMap.put(s, snapshot);
                         return snapshot;
                     }))
-                    .orElse(() -> snapshot);
+                    .orSome(() -> snapshot);
         }
 
 
@@ -81,6 +86,6 @@ public final class MemorySnapshotStorage<K, S, V> implements SnapshotStorage<K, 
                 .stream()
                 .flatMap(entry -> entry.getValue()
                         .stream()
-                        .map(Events.modSeq(s -> seq(entry.getKey(), s))));
+                        .map(F_Function(Events.modSeq(s -> seq(entry.getKey(), s)))));
     }
 }

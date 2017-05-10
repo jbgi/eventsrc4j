@@ -1,18 +1,19 @@
 package eventsrc4j.sample.bankaccount;
 
-import java.util.function.Function;
+import fj.F;
 
 import static eventsrc4j.sample.bankaccount.AccountStates.Opened;
 import static eventsrc4j.sample.bankaccount.AccountStates.modOpenedAccount;
 import static eventsrc4j.sample.bankaccount.OpenedAccounts.AccountState0;
 import static eventsrc4j.sample.bankaccount.OpenedAccounts.modBalance0;
+import static fj.Function.identity;
 
 public abstract class AccountEventApply {
 
-  public static final Function<AccountEvent, Function<AccountState, AccountState>> ApplyEvent =
+  public static final F<AccountEvent, F<AccountState, AccountState>> ApplyEvent =
 
       AccountEvents.cases()
-          .<Function<AccountState, AccountState>>Opened((initialDeposit, minBalance) ->
+          .<F<AccountState, AccountState>>Opened((initialDeposit, minBalance) ->
               __ -> Opened(AccountState0(initialDeposit.value(), minBalance)))
 
           .Withdrawn((Amount amount) ->
@@ -21,7 +22,7 @@ public abstract class AccountEventApply {
           .Credited((Amount amount) ->
               modOpenedAccount(modBalance0(balance -> balance.add(amount.value()))))
 
-          .Overdrawn_(Function.identity());
+          .Overdrawn_(identity());
 
   private AccountEventApply() {
   }
